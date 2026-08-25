@@ -1,86 +1,63 @@
 <div align="center">
 
-<a href="https://mihon.app">
-    <img src="./.github/assets/logo.png" alt="Mihon logo" title="Mihon logo" width="80"/>
-</a>
+# 神殇漫画
 
-# Mihon [App](#)
+### 基于 Mihon 的 Komga 漫画客户端
 
-### Full-featured reader
-Discover and read manga, webtoons, comics, and more – easier than ever on your Android device.
+内置 Komga 服务器连接，支持多媒体库目录树浏览、视频/音频播放，启动即登录。
 
-[![Discord server](https://img.shields.io/discord/1195734228319617024.svg?label=&labelColor=6A7EC2&color=7389D8&logo=discord&logoColor=FFFFFF)](https://discord.gg/mihon)
-[![GitHub downloads](https://img.shields.io/github/downloads/mihonapp/mihon/total?label=downloads&labelColor=27303D&color=0D1117&logo=github&logoColor=FFFFFF&style=flat)](https://mihon.app/download)
-
-[![CI](https://img.shields.io/github/actions/workflow/status/mihonapp/mihon/build.yml?labelColor=27303D)](https://github.com/mihonapp/mihon/actions/workflows/build_push.yml)
-[![License: Apache-2.0](https://img.shields.io/github/license/mihonapp/mihon?labelColor=27303D&color=0877d2)](/LICENSE)
-[![Translation status](https://img.shields.io/weblate/progress/mihon?labelColor=27303D&color=946300)](https://hosted.weblate.org/engage/mihon/)
-
-## Download
-
-[![Mihon Stable](https://img.shields.io/github/release/mihonapp/mihon.svg?maxAge=3600&label=Stable&labelColor=06599d&color=043b69)](https://mihon.app/download)
-[![Mihon Beta](https://img.shields.io/github/v/release/mihonapp/mihon-preview.svg?maxAge=3600&label=Beta&labelColor=2c2c47&color=1c1c39)](https://mihon.app/download)
-
-*Requires Android 8.0 or higher.*
-
-## Features
-
-<div align="left">
-
-* Local reading of content.
-* A configurable reader with multiple viewers, reading directions and other settings.
-* Tracker support: [MangaBaka](https://mangabaka.org), [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [Kitsu](https://kitsu.app/), [MangaUpdates](https://mangaupdates.com), [Shikimori](https://shikimori.one), [Bangumi](https://bgm.tv/), and [Hikka](https://hikka.io/) support.
-* Categories to organize your library.
-* Light and dark themes.
-* Schedule updating your library for new chapters.
-* Create backups locally to read offline or to your desired cloud service.
-* Plus much more...
+[![CI](https://img.shields.io/github/actions/workflow/status/shenshangshang/mihon/build.yml?label=Build&labelColor=27303D)](https://github.com/shenshangshang/mihon/actions)
+[![Release](https://img.shields.io/github/v/release/shenshangshang/mihon?label=Release&labelColor=06599d&color=043b69)](https://github.com/shenshangshang/mihon/releases)
+[![License: Apache-2.0](https://img.shields.io/github/license/shenshangshang/mihon?labelColor=27303D&color=0877d2)](/LICENSE)
 
 </div>
 
-## Contributing
+## 下载
 
-[Code of conduct](./CODE_OF_CONDUCT.md) · [Contributing guide](./CONTRIBUTING.md)
+[![Release](https://img.shields.io/github/v/release/shenshangshang/mihon.svg?label=下载&labelColor=06599d&color=043b69)](https://github.com/shenshangshang/mihon/releases)
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+*需要 Android 8.0 或更高版本。*
 
-Before reporting a new issue, take a look at the [FAQ](https://mihon.app/docs/faq/general), the [changelog](https://mihon.app/changelogs/) and the already opened [issues](https://github.com/mihonapp/mihon/issues); if you got any questions, join our [Discord server](https://discord.gg/mihon).
+安装 `app-arm64-v8a-debug` 版本（现代手机均为 arm64），旧设备安装 `app-universal-debug`。
 
+## 功能
 
-### Repositories
+- **内置服务器**：预配置 `https://komga.shenshang.online`，无需手动填写地址
+- **启动登录**：打开 app 输入 Komga 账号密码即可使用
+- **多媒体库**：底栏"书城"tab 显示所有媒体库，点击进入目录树浏览
+- **目录树导航**：文件夹卡片 + 面包屑导航，与 Komga 网页端体验一致
+- **视频/音频支持**：VIDEO/AUDIO 类型书籍可直接流媒体播放
+- **扩展管理**：原 Mihon 浏览功能移至"更多"页面（扩展管理 + 迁移）
+- **上游自动合并**：每日自动合并 mihonapp/mihon 和 keiyoushi/extensions 更新
 
-[![mihonapp/website - GitHub](https://github-stats-extended.vercel.app/api/pin/?username=mihonapp&repo=website&bg_color=161B22&text_color=c9d1d9&title_color=0877d2&icon_color=0877d2&border_radius=8&hide_border=true&description_lines_count=2)](https://github.com/mihonapp/website/)
-[![mihonapp/bitmap.kt - GitHub](https://github-stats-extended.vercel.app/api/pin/?username=mihonapp&repo=bitmap.kt&bg_color=161B22&text_color=c9d1d9&title_color=0877d2&icon_color=0877d2&border_radius=8&hide_border=true&description_lines_count=2)](https://github.com/mihonapp/bitmap.kt/)
+## 使用方法
 
-### Credits
+1. 从 [Releases](https://github.com/shenshangshang/mihon/releases) 下载 APK 安装
+2. 打开 app，输入 Komga 服务器用户名和密码
+3. 登录后点击底栏"书城"tab 浏览媒体库
+4. 点击媒体库卡片进入目录树，点击文件夹卡片进入子目录
+5. 点击漫画卡片进入详情页，选择章节阅读
+6. 在"更多 → 设置 → 神殇漫画"中可修改账号密码
 
-Thank you to all the people who have contributed!
+## 架构
 
-<a href="https://github.com/mihonapp/mihon/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=mihonapp/mihon" alt="Mihon app contributors" title="Mihon app contributors" width="800"/>
-</a>
+- `source-komga/`：内置 Komga Source 模块（Metro DI 注入）
+  - `KomgaSource`：实现 `Source, UnmeteredSource`，目录树逻辑
+  - `KomgaApi`：OkHttp 封装的 Komga REST API
+  - `KomgaPreferences`：服务器凭据存储（PreferenceStore）
+- `app/`：修改的 Mihon 应用
+  - `KomgaTab`：底栏第 4 个 tab（书城）
+  - `KomgaLoginScreen`：启动登录界面
+  - `BrowseSourceScreen`：面包屑导航 + 目录卡片拦截
+  - `SettingsKomgaScreen`：服务器凭据设置页
+  - `ExtensionsScreen` / `MigrationScreen`：从浏览 tab 移出的独立页面
 
-### Disclaimer
+## CI/CD
 
-The developer(s) of this application does not have any affiliation with the content providers available, and this application hosts zero content.
+- **build.yml**：push/PR 时自动构建 debug APK
+- **release.yml**：打 `v*` tag 时自动构建并发布 Release
+- **sync-upstream.yml**：每日 08:00 UTC 自动合并上游更新
 
-### License
+## 上游
 
-<pre>
-Copyright © 2015 Javier Tomás
-Copyright © 2024 Mihon Open Source Project
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-</pre>
-
-</div>
+基于 [Mihon](https://github.com/mihonapp/mihon) 修改，遵循 Apache-2.0 许可证。

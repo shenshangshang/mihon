@@ -41,7 +41,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import tachiyomi.core.common.preference.AndroidPreferenceStore
 import tachiyomi.source.komga.KomgaPreferences
 
 class KomgaLoginScreen : Screen() {
@@ -52,14 +51,7 @@ class KomgaLoginScreen : Screen() {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
-        val prefs = remember {
-            KomgaPreferences(
-                context,
-                AndroidPreferenceStore(
-                    context.getSharedPreferences("komga_source", android.content.Context.MODE_PRIVATE)
-                )
-            )
-        }
+        val prefs = remember { KomgaPreferences(context) }
 
         var username by remember { mutableStateOf(prefs.username) }
         var password by remember { mutableStateOf(prefs.password) }

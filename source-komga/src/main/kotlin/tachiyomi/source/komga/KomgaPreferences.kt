@@ -4,15 +4,19 @@ import android.content.Context
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import tachiyomi.core.common.preference.AndroidPreferenceStore
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 
 @Inject
 @SingleIn(AppScope::class)
 class KomgaPreferences(
-    private val context: Context,
-    private val preferenceStore: PreferenceStore,
+    context: Context,
 ) {
+    private val preferenceStore: PreferenceStore = AndroidPreferenceStore(
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    )
+
     private val baseUrlPref: Preference<String> by lazy {
         preferenceStore.getString(KEY_BASE_URL, DEFAULT_BASE_URL)
     }
@@ -54,6 +58,7 @@ class KomgaPreferences(
     fun apiKeyPreference(): Preference<String> = apiKeyPref
 
     companion object {
+        const val PREFS_NAME = "komga_source"
         const val DEFAULT_BASE_URL = "https://komga.shenshang.online"
         const val KEY_BASE_URL = "base_url"
         const val KEY_USERNAME = "username"

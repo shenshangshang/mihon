@@ -20,6 +20,7 @@ import okhttp3.OkHttpClient
 import tachiyomi.source.komga.api.KomgaApi
 import tachiyomi.source.komga.api.toSChapter
 import tachiyomi.source.komga.api.toSManga
+import tachiyomi.source.komga.dto.LibraryDto
 import tachiyomi.source.komga.dto.SeriesDto
 import java.util.concurrent.TimeUnit
 
@@ -42,7 +43,7 @@ class KomgaSource(
     @Volatile
     private var seriesCache: Pair<List<SeriesDto>, Long>? = null
     @Volatile
-    private var librariesCache: Pair<List<tachiyomi.source.komga.dto.LibraryDto>, Long>? = null
+    private var librariesCache: List<LibraryDto>? = null
     private val cacheTtl = 5 * 60 * 1000L
 
     override val id: Long = ID
@@ -55,10 +56,21 @@ class KomgaSource(
 
     override fun getFilterList(): FilterList = FilterList(
         listOf(
-            LibraryFilter(api.getLibraries()),
+            LibraryFilter(getCachedLibraries()),
             SortFilter(),
         ),
     )
+
+    private fun getCachedLibraries(): List<LibraryDto> {
+        librariesCache?.let { return it }
+        return try {
+            val libs = api.getLibraries()
+            librariesCache = libs
+            libs
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     private fun getCachedSeries(libraryId: String? = null): List<SeriesDto> {
         val cached = seriesCache
@@ -70,17 +82,7 @@ class KomgaSource(
         return series
     }
 
-    private fun getCachedLibraries(): List<tachiyomi.source.komga.dto.LibraryDto> {
-        val cached = librariesCache
-        if (cached != null && System.currentTimeMillis() - cached.second < cacheTtl) {
-            return cached.first
-        }
-        val libs = api.getLibraries()
-        librariesCache = libs to System.currentTimeMillis()
-        return libs
-    }
-
-    private fun createLibrarySManga(lib: tachiyomi.source.komga.dto.LibraryDto): SManga = SManga.create().apply {
+    private fun createLibrarySManga(lib: LibraryDto): SManga = SManga.create().apply {
         title = lib.name
         url = "$LIB_PREFIX${lib.id}"
         thumbnail_url = null
@@ -297,7 +299,7 @@ class KomgaSource(
 }
 
 class LibraryFilter(
-    val libraries: List<tachiyomi.source.komga.dto.LibraryDto>,
+    val libraries: List<LibraryDto>,
 ) : Filter.Select<String>(
     "Library",
     arrayOf("All") + libraries.map { it.name }.toTypedArray(),

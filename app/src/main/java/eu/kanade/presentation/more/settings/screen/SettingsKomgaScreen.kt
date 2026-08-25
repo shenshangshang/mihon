@@ -10,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import eu.kanade.presentation.more.settings.Preference
 import kotlinx.coroutines.launch
-import tachiyomi.core.common.preference.AndroidPreferenceStore
 import tachiyomi.i18n.MR
 import tachiyomi.source.komga.KomgaPreferences
 
@@ -25,14 +24,7 @@ object SettingsKomgaScreen : SearchableSettings {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
 
-        val prefs = remember {
-            KomgaPreferences(
-                context,
-                AndroidPreferenceStore(
-                    context.getSharedPreferences("komga_source", android.content.Context.MODE_PRIVATE)
-                )
-            )
-        }
+        val prefs = remember { KomgaPreferences(context) }
 
         var testResult by remember { mutableStateOf<String?>(null) }
         var testing by remember { mutableStateOf(false) }
