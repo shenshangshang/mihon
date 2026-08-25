@@ -4,8 +4,6 @@ import android.content.Context
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import eu.kanade.tachiyomi.source.Source
-import eu.kanade.tachiyomi.source.UnmeteredSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
@@ -13,9 +11,13 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
+import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.source.UnmeteredSource
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import okhttp3.Credentials
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import tachiyomi.source.komga.api.KomgaApi
 import tachiyomi.source.komga.api.toSChapter
@@ -29,23 +31,7 @@ import java.util.concurrent.TimeUnit
 class KomgaSource(
     private val context: Context,
     private val preferences: KomgaPreferences,
-) : Source, UnmeteredSource {
-
-    private val client: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(60, TimeUnit.SECONDS)
-            .build()
-    }
-
-    private val api: KomgaApi by lazy { KomgaApi(client, preferences) }
-
-    @Volatile
-    private var seriesCache: Pair<List<SeriesDto>, Long>? = null
-    @Volatile
-    private var librariesCache: Pair<List<LibraryDto>, Long>? = null
-    private val cacheTtl = 5 * 60 * 1000L
+) : HttpSource(), UnmeteredSource {
 
     override val id: Long = ID
 
@@ -55,6 +41,41 @@ class KomgaSource(
 
     override val supportsLatest: Boolean = true
 
+    override val baseUrl: String get() = preferences.baseUrl
+
+    private val komgaClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
+
+    // Use our own client with auth headers; HttpSource.client is the
+    // global network client without Komga credentials.
+    override val client: OkHttpClient get() = komgaClient
+
+    // Covers go through MangaCoverFetcher which uses HttpSource.headers
+    // and HttpSource.client. Override both so cover/page/image requests
+    // carry Komga auth automatically.
+    override fun headersBuilder(): Headers.Builder {
+        val builder = super.headersBuilder()
+        if (preferences.apiKey.isNotBlank()) {
+            builder.add("X-API-Key", preferences.apiKey)
+        } else if (preferences.username.isNotBlank()) {
+            builder.add("Authorization", Credentials.basic(preferences.username, preferences.password))
+        }
+        return builder
+    }
+
+    private val api: KomgaApi by lazy { KomgaApi(komgaClient, preferences) }
+
+    @Volatile
+    private var seriesCache: Pair<List<SeriesDto>, Long>? = null
+    @Volatile
+    private var librariesCache: Pair<List<LibraryDto>, Long>? = null
+    private val cacheTtl = 5 * 60 * 1000L
+
     override fun getFilterList(): FilterList = FilterList(
         listOf(
             LibraryFilter(cachedLibrariesOnly()),
@@ -62,9 +83,8 @@ class KomgaSource(
         ),
     )
 
-    /**
-     * Read-only cache access, safe for main thread (no network).
-     */
+    // --- Cache helpers ---
+
     private fun cachedLibrariesOnly(): List<LibraryDto> = librariesCache?.first ?: emptyList()
 
     private fun getCachedLibraries(): List<LibraryDto> {
@@ -77,7 +97,6 @@ class KomgaSource(
                 librariesCache = libs to System.currentTimeMillis()
                 libs
             } else {
-                // Don't cache empty results - could be a transient failure
                 emptyList()
             }
         } catch (e: Exception) {
@@ -104,7 +123,7 @@ class KomgaSource(
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_LIBRARY)) }
     }
 
-    // --- Directory tree browsing ---
+    // --- Directory tree ---
 
     private fun findCommonPrefixSegments(paths: List<List<String>>): List<String> {
         if (paths.isEmpty()) return emptyList()
@@ -125,9 +144,7 @@ class KomgaSource(
         }
         if (pathsWithUrl.isEmpty()) return allSeries.map { it.toSManga(preferences.baseUrl) }
 
-        val splitPaths = pathsWithUrl.map { (_, path) ->
-            path.split("/").filter { it.isNotBlank() }
-        }
+        val splitPaths = pathsWithUrl.map { (_, path) -> path.split("/").filter { it.isNotBlank() } }
         val commonPrefix = findCommonPrefixSegments(splitPaths)
         val dirPrefix = if (splitPaths.any { it.size == commonPrefix.size }) {
             commonPrefix.dropLast(1)
@@ -176,7 +193,7 @@ class KomgaSource(
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_DIRECTORY)) }
     }
 
-    // --- Source interface ---
+    // --- Source interface (suspend API, overrides CatalogueSource defaults) ---
 
     override suspend fun getPopularManga(page: Int): MangasPage {
         if (page > 1) return MangasPage(emptyList(), false)
@@ -198,7 +215,7 @@ class KomgaSource(
         query: String,
         filters: FilterList,
     ): MangasPage {
-        // Library card click → show series directory tree for that library
+        // Library card click -> show series directory tree for that library
         if (query.startsWith(LIB_PREFIX)) {
             if (page > 1) return MangasPage(emptyList(), false)
             val libId = query.removePrefix(LIB_PREFIX)
@@ -207,7 +224,7 @@ class KomgaSource(
             return MangasPage(items, false)
         }
 
-        // Directory card click → show subdirectories/series
+        // Directory card click -> show subdirectories/series
         if (query.startsWith(DIR_PREFIX)) {
             if (page > 1) return MangasPage(emptyList(), false)
             val dirPath = query.removePrefix(DIR_PREFIX)
@@ -216,11 +233,9 @@ class KomgaSource(
             return MangasPage(items, false)
         }
 
-        // Root listing → show libraries
+        // Root listing -> show libraries
         if (query.isBlank()) {
             if (page > 1) return MangasPage(emptyList(), false)
-            // Direct API call: let errors propagate so the UI shows the real
-            // error (401/network) instead of a misleading "no results"
             val libraries = api.getLibraries()
             if (libraries.isNotEmpty()) {
                 librariesCache = libraries to System.currentTimeMillis()
