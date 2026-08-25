@@ -48,6 +48,16 @@ class AndroidSourceManager(
     override val sources: Flow<List<Source>> = sourcesMapFlow.map { it.values.toList() }
 
     init {
+        // Initialize built-in sources immediately so they are available
+        // without waiting for extensions to load
+        sourcesMapFlow.value = ConcurrentHashMap<Long, Source>(
+            mapOf(
+                LocalSource.ID to localSource,
+                KomgaSource.ID to komgaSource,
+            ),
+        )
+        _isInitialized.value = true
+
         scope.launch {
             extensionManager.installedExtensionsFlow
                 .collectLatest { extensions ->
@@ -64,7 +74,6 @@ class AndroidSourceManager(
                         }
                     }
                     sourcesMapFlow.value = mutableMap
-                    _isInitialized.value = true
                 }
         }
 

@@ -62,17 +62,18 @@ class KomgaApi(
         sort: String? = null,
         libraryId: String? = null,
     ): Pair<List<SManga>, Boolean> {
-        val url = "/api/v1/series".toHttpUrl().newBuilder()
+        val urlBuilder = ("$baseUrl/api/v1/series").toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
             .addQueryParameter("size", size.toString())
             .addQueryParameter("deleted", "false")
 
-        search?.takeIf { it.isNotBlank() }?.let { url.addQueryParameter("search", it) }
-        sort?.takeIf { it.isNotBlank() }?.let { url.addQueryParameter("sort", it) }
-        libraryId?.takeIf { it.isNotBlank() }?.let { url.addQueryParameter("library_id", it) }
+        search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
+        sort?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("sort", it) }
+        libraryId?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("library_id", it) }
 
-        val builtUrl = url.build()
-        val data = json.decodeFromString<PageWrapperDto<SeriesDto>>(execute(builtUrl.encodedPath + "?" + builtUrl.encodedQuery))
+        val builtUrl = urlBuilder.build()
+        val path = builtUrl.encodedPath + "?" + builtUrl.encodedQuery
+        val data = json.decodeFromString<PageWrapperDto<SeriesDto>>(execute(path))
         val manga = data.content.map { it.toSManga(baseUrl) }
         return manga to !data.last
     }
@@ -82,14 +83,15 @@ class KomgaApi(
         var page = 0
         var hasNext = true
         while (hasNext) {
-            val urlBuilder = "/api/v1/series".toHttpUrl().newBuilder()
+            val urlBuilder = ("$baseUrl/api/v1/series").toHttpUrl().newBuilder()
                 .addQueryParameter("page", page.toString())
                 .addQueryParameter("size", "100")
                 .addQueryParameter("deleted", "false")
             libraryId?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("library_id", it) }
             val builtUrl = urlBuilder.build()
+            val path = builtUrl.encodedPath + "?" + builtUrl.encodedQuery
             val data = try {
-                json.decodeFromString<PageWrapperDto<SeriesDto>>(execute(builtUrl.encodedPath + "?" + builtUrl.encodedQuery))
+                json.decodeFromString<PageWrapperDto<SeriesDto>>(execute(path))
             } catch (e: Exception) {
                 return all
             }
