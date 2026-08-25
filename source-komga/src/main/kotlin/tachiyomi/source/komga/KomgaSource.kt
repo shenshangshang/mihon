@@ -41,6 +41,8 @@ class KomgaSource(
 
     @Volatile
     private var seriesCache: Pair<List<SeriesDto>, Long>? = null
+    @Volatile
+    private var librariesCache: Pair<List<tachiyomi.source.komga.dto.LibraryDto>, Long>? = null
     private val cacheTtl = 5 * 60 * 1000L
 
     override val id: Long = ID
@@ -66,6 +68,25 @@ class KomgaSource(
         val series = api.getAllSeries(libraryId)
         seriesCache = series to System.currentTimeMillis()
         return series
+    }
+
+    private fun getCachedLibraries(): List<tachiyomi.source.komga.dto.LibraryDto> {
+        val cached = librariesCache
+        if (cached != null && System.currentTimeMillis() - cached.second < cacheTtl) {
+            return cached.first
+        }
+        val libs = api.getLibraries()
+        librariesCache = libs to System.currentTimeMillis()
+        return libs
+    }
+
+    private fun createLibrarySManga(lib: tachiyomi.source.komga.dto.LibraryDto): SManga = SManga.create().apply {
+        title = lib.name
+        url = "$LIB_PREFIX${lib.id}"
+        thumbnail_url = null
+        status = SManga.UNKNOWN
+        initialized = true
+        memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_LIBRARY)) }
     }
 
     // --- Directory tree browsing ---
@@ -144,8 +165,8 @@ class KomgaSource(
 
     override suspend fun getPopularManga(page: Int): MangasPage {
         if (page > 1) return MangasPage(emptyList(), false)
-        val allSeries = getCachedSeries()
-        val items = buildDirectoryItems(allSeries, "")
+        val libraries = getCachedLibraries()
+        val items = libraries.map { createLibrarySManga(it) }
         return MangasPage(items, false)
     }
 
@@ -162,6 +183,16 @@ class KomgaSource(
         query: String,
         filters: FilterList,
     ): MangasPage {
+        // Library card click → show series directory tree for that library
+        if (query.startsWith(LIB_PREFIX)) {
+            if (page > 1) return MangasPage(emptyList(), false)
+            val libId = query.removePrefix(LIB_PREFIX)
+            val allSeries = getCachedSeries(libId)
+            val items = buildDirectoryItems(allSeries, "")
+            return MangasPage(items, false)
+        }
+
+        // Directory card click → show subdirectories/series
         if (query.startsWith(DIR_PREFIX)) {
             if (page > 1) return MangasPage(emptyList(), false)
             val dirPath = query.removePrefix(DIR_PREFIX)
@@ -170,10 +201,11 @@ class KomgaSource(
             return MangasPage(items, false)
         }
 
+        // Root listing → show libraries
         if (query.isBlank()) {
             if (page > 1) return MangasPage(emptyList(), false)
-            val allSeries = getCachedSeries()
-            val items = buildDirectoryItems(allSeries, "")
+            val libraries = getCachedLibraries()
+            val items = libraries.map { createLibrarySManga(it) }
             return MangasPage(items, false)
         }
 
@@ -257,8 +289,10 @@ class KomgaSource(
     companion object {
         const val ID = 69420L
         const val DIR_PREFIX = "dir://"
+        const val LIB_PREFIX = "lib://"
         const val MEMO_KIND = "mihon.kind"
         const val KIND_DIRECTORY = "directory"
+        const val KIND_LIBRARY = "library"
     }
 }
 

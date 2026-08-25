@@ -15,7 +15,7 @@ class KomgaPreferences(
         get() = context.getSharedPreferences("komga_source", Context.MODE_PRIVATE)
 
     var baseUrl: String
-        get() = prefs.getString(KEY_BASE_URL, "")!!.removeSuffix("/")
+        get() = prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL)!!.removeSuffix("/")
         set(value) = prefs.edit().putString(KEY_BASE_URL, value.removeSuffix("/")).apply()
 
     var username: String
@@ -33,7 +33,11 @@ class KomgaPreferences(
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && (apiKey.isNotBlank() || (username.isNotBlank() && password.isNotBlank()))
 
+    val isLoggedIn: Boolean
+        get() = username.isNotBlank() && password.isNotBlank()
+
     companion object {
+        const val DEFAULT_BASE_URL = "https://komga.shenshang.online"
         const val KEY_BASE_URL = "base_url"
         const val KEY_USERNAME = "username"
         const val KEY_PASSWORD = "password"

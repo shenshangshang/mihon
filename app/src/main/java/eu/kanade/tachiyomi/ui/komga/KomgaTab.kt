@@ -22,7 +22,7 @@ data object KomgaTab : Tab {
             val isSelected = LocalTabNavigator.current.current.key == key
             return TabOptions(
                 index = 3u,
-                title = stringResource(MR.strings.browse),
+                title = "书城",
                 icon = Icons.Outlined.Bookstore,
             )
         }

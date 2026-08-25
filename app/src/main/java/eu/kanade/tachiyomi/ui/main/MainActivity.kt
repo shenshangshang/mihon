@@ -88,6 +88,7 @@ import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.deeplink.DeepLinkScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
+import eu.kanade.tachiyomi.ui.komga.KomgaLoginScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
 import eu.kanade.tachiyomi.ui.more.OnboardingScreen
@@ -121,6 +122,7 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import tachiyomi.source.komga.KomgaPreferences
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -141,6 +143,8 @@ class MainActivity : BaseActivity() {
     @Inject private lateinit var getIncognitoState: GetIncognitoState
 
     @Inject private lateinit var extensionApi: ExtensionApi
+
+    @Inject private lateinit var komgaPreferences: KomgaPreferences
 
     // To be checked by splash screen. If true then splash screen will be removed.
     var ready = false
@@ -269,6 +273,7 @@ class MainActivity : BaseActivity() {
 
                 if (!isBenchmarkBuildType) {
                     if (isLaunch) CheckForUpdates()
+                    ShowKomgaLogin()
                     ShowOnboarding()
                     ShowDonationCampaign()
                 }
@@ -353,6 +358,17 @@ class MainActivity : BaseActivity() {
         LaunchedEffect(Unit) {
             if (!preferences.shownOnboardingFlow.get() && navigator.lastItem !is OnboardingScreen) {
                 navigator.push(OnboardingScreen())
+            }
+        }
+    }
+
+    @Composable
+    private fun ShowKomgaLogin() {
+        val navigator = LocalNavigator.currentOrThrow
+
+        LaunchedEffect(Unit) {
+            if (!komgaPreferences.isLoggedIn && navigator.lastItem !is KomgaLoginScreen) {
+                navigator.push(KomgaLoginScreen())
             }
         }
     }

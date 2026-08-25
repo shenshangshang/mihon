@@ -96,15 +96,23 @@ data class BrowseSourceScreen(
 
         val navigator = LocalNavigator.currentOrThrow
         val navigateUp: () -> Unit = {
-            val dirQuery = state.listing.query?.takeIf { it.startsWith("dir://") }
-            if (dirQuery != null) {
-                val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
-                if (segments.size > 1) {
-                    viewModel.setListing(Listing.Search("dir://" + segments.dropLast(1).joinToString("/"), FilterList()))
-                } else {
+            val query = state.listing.query
+            val dirQuery = query?.takeIf { it.startsWith("dir://") }
+            val libQuery = query?.takeIf { it.startsWith("lib://") }
+            when {
+                dirQuery != null -> {
+                    val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
+                    if (segments.size > 1) {
+                        viewModel.setListing(Listing.Search("dir://" + segments.dropLast(1).joinToString("/"), FilterList()))
+                    } else {
+                        // Back from dir → return to library root
+                        viewModel.setListing(Listing.Search("", FilterList()))
+                    }
+                }
+                libQuery != null -> {
+                    // Back from library listing → return to libraries
                     viewModel.setListing(Listing.Search("", FilterList()))
                 }
-            } else when {
                 !state.isUserQuery && state.toolbarQuery != null -> viewModel.setToolbarQuery(null)
                 else -> navigator.pop()
             }
@@ -225,9 +233,10 @@ data class BrowseSourceScreen(
                     HorizontalDivider()
 
                     // Breadcrumb navigation for directory tree browsing
-                    val dirQuery = state.listing.query?.takeIf { it.startsWith("dir://") }
-                    if (dirQuery != null) {
-                        val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
+                    val query = state.listing.query
+                    val dirQuery = query?.takeIf { it.startsWith("dir://") }
+                    val libQuery = query?.takeIf { it.startsWith("lib://") }
+                    if (dirQuery != null || libQuery != null) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -244,25 +253,41 @@ data class BrowseSourceScreen(
                                     viewModel.setListing(Listing.Search("", FilterList()))
                                 },
                             )
-                            segments.forEachIndexed { index, segment ->
+                            if (libQuery != null) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                                     contentDescription = null,
                                     modifier = Modifier.size(MaterialTheme.padding.small),
                                     tint = MaterialTheme.colorScheme.outline,
                                 )
-                                val isLast = index == segments.lastIndex
                                 Text(
-                                    text = segment,
+                                    text = "媒体库",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = if (isLast) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.primary,
-                                    modifier = if (isLast) Modifier
-                                    else Modifier.clickable {
-                                        val targetPath = segments.subList(0, index + 1).joinToString("/")
-                                        viewModel.setListing(Listing.Search("dir://$targetPath", FilterList()))
-                                    },
+                                    color = MaterialTheme.colorScheme.onSurface,
                                 )
+                            }
+                            if (dirQuery != null) {
+                                val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
+                                segments.forEachIndexed { index, segment ->
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(MaterialTheme.padding.small),
+                                        tint = MaterialTheme.colorScheme.outline,
+                                    )
+                                    val isLast = index == segments.lastIndex
+                                    Text(
+                                        text = segment,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (isLast) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.primary,
+                                        modifier = if (isLast) Modifier
+                                        else Modifier.clickable {
+                                            val targetPath = segments.subList(0, index + 1).joinToString("/")
+                                            viewModel.setListing(Listing.Search("dir://$targetPath", FilterList()))
+                                        },
+                                    )
+                                }
                             }
                         }
                         HorizontalDivider()
@@ -287,10 +312,13 @@ data class BrowseSourceScreen(
                             it["mihon.kind"]?.jsonPrimitive?.contentOrNull
                         } catch (e: Exception) { null }
                     }
-                    if (memoKind == "directory") {
-                        viewModel.setListing(Listing.Search(manga.url, FilterList()))
-                    } else {
-                        navigator.push(MangaScreen(manga.id, true))
+                    when (memoKind) {
+                        "directory", "library" -> {
+                            viewModel.setListing(Listing.Search(manga.url, FilterList()))
+                        }
+                        else -> {
+                            navigator.push(MangaScreen(manga.id, true))
+                        }
                     }
                 },
                 onMangaLongClick = { manga ->
@@ -299,7 +327,7 @@ data class BrowseSourceScreen(
                             it["mihon.kind"]?.jsonPrimitive?.contentOrNull
                         } catch (e: Exception) { null }
                     }
-                    if (memoKind != "directory") {
+                    if (memoKind != "directory" && memoKind != "library") {
                         scope.launchIO {
                             val duplicates = viewModel.getDuplicateLibraryManga(manga)
                             when {

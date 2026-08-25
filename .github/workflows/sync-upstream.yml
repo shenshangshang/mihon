@@ -11,8 +11,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  sync:
-    name: Merge upstream into main
+  sync-mihon:
+    name: Merge mihonapp/mihon into main
     runs-on: ubuntu-24.04
 
     steps:
@@ -39,7 +39,6 @@ jobs:
           UPSTREAM=upstream/main
           BASE=$(git rev-parse HEAD)
           echo "base_sha=$BASE" >> $GITHUB_OUTPUT
-          echo "upstream_sha=$(git rev-parse $UPSTREAM)" >> $GITHUB_OUTPUT
 
           if git merge-base --is-ancestor $UPSTREAM $BASE; then
             echo "No upstream changes to merge."
@@ -74,8 +73,7 @@ jobs:
           BRANCH="sync-upstream-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
           git merge upstream/main --no-edit || true
-          # Resolve trivial conflicts by preferring upstream where possible
-          git diff --name-only --diff-filter=U > /tmp/conflicts.txt
+          git diff --name-only --diff-filter=U > /tmp/conflicts.txt || true
           if [ -s /tmp/conflicts.txt ]; then
             echo "Conflicted files:"
             cat /tmp/conflicts.txt
@@ -85,7 +83,58 @@ jobs:
           git push origin "$BRANCH"
           gh pr create \
             --title "chore: sync upstream $(date +%Y-%m-%d)" \
-            --body "Automated upstream sync from mihonapp/mihon. This PR was created because the automatic merge had conflicts that need manual resolution. Conflicted files:" \
+            --body "Automated upstream sync from mihonapp/mihon. This PR was created because the automatic merge had conflicts that need manual resolution." \
             --base main \
             --head "$BRANCH" \
-            --label "sync-upstream"
+            --label "sync-upstream" || true
+
+  sync-extensions:
+    name: Check keiyoushi/extensions updates
+    runs-on: ubuntu-24.04
+    needs: sync-mihon
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for extension index changes
+        id: check
+        run: |
+          # Fetch the latest extension index from keiyoushi
+          curl -sL https://github.com/keiyoushi/extensions/raw/repo/index.min.json -o /tmp/index_new.json || true
+          if [ ! -f /tmp/index_new.json ] || [ ! -s /tmp/index_new.json ]; then
+            echo "Could not fetch extension index, skipping."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if we have a stored copy
+          if [ -f .github/extension-index.json ]; then
+            if diff -q .github/extension-index.json /tmp/index_new.json > /dev/null 2>&1; then
+              echo "No extension changes."
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            else
+              echo "Extension index changed."
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No stored index, creating initial copy."
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update extension index
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          cp /tmp/index_new.json .github/extension-index.json
+          git add .github/extension-index.json
+          git commit -m "chore: update keiyoushi extension index $(date +%Y-%m-%d)" || true
+          git push origin main
