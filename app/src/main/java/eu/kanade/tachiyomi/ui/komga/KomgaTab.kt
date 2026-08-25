@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -11,8 +12,6 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
-import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.source.komga.KomgaSource
 
 data object KomgaTab : Tab {
@@ -20,16 +19,15 @@ data object KomgaTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val isSelected = LocalTabNavigator.current.current.key == key
+            val icon = rememberVectorPainter(Icons.Outlined.CollectionsBookmark)
             return TabOptions(
                 index = 3u,
                 title = "书城",
-                icon = Icons.Outlined.CollectionsBookmark,
+                icon = icon,
             )
         }
 
     override suspend fun onReselect(navigator: Navigator) {
-        // Navigate back to root of Komga browse
         navigator.popUntilRoot()
     }
 
