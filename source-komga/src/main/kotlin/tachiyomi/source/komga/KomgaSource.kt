@@ -152,9 +152,9 @@ class KomgaSource(
         }
         if (pathsWithUrl.isEmpty()) return allSeries.map { series ->
             series.toSManga(preferences.baseUrl).apply {
+                url = "$SERIES_PREFIX${series.libraryId}/${series.id}"
                 memo = buildJsonObject {
                     put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
-                    put(MEMO_QUERY, JsonPrimitive("$SERIES_PREFIX${series.libraryId}/${series.id}"))
                 }
             }
         }
@@ -190,9 +190,9 @@ class KomgaSource(
 
             if (relativeSegments.size == currentSegments.size + 1) {
                 items.add(series.toSManga(preferences.baseUrl).apply {
+                    url = "$SERIES_PREFIX${series.libraryId}/${series.id}"
                     memo = buildJsonObject {
                         put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
-                        put(MEMO_QUERY, JsonPrimitive("$SERIES_PREFIX${series.libraryId}/${series.id}"))
                     }
                 })
             } else if (nextSegment !in seenDirs) {
