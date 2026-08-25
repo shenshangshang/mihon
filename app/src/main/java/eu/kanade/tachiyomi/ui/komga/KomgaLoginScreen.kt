@@ -42,6 +42,7 @@ import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tachiyomi.source.komga.KomgaPreferences
+import java.util.concurrent.TimeUnit
 
 class KomgaLoginScreen : Screen() {
 
@@ -90,11 +91,14 @@ class KomgaLoginScreen : Screen() {
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it; errorMessage = null },
-                    label = { Text("用户名") },
+                    label = { Text("邮箱 / 用户名") },
                     leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next,
+                    ),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -128,7 +132,7 @@ class KomgaLoginScreen : Screen() {
                 Button(
                     onClick = {
                         if (username.isBlank() || password.isBlank()) {
-                            errorMessage = "请输入用户名和密码"
+                            errorMessage = "请输入邮箱和密码"
                             return@Button
                         }
                         loading = true
@@ -136,7 +140,10 @@ class KomgaLoginScreen : Screen() {
                         scope.launch {
                             val ok = withContext(Dispatchers.IO) {
                                 try {
-                                    val client = OkHttpClient()
+                                    val client = OkHttpClient.Builder()
+                                        .connectTimeout(15, TimeUnit.SECONDS)
+                                        .readTimeout(15, TimeUnit.SECONDS)
+                                        .build()
                                     val url = "${prefs.baseUrl}/api/v1/libraries"
                                     val req = Request.Builder()
                                         .url(url)
@@ -155,7 +162,7 @@ class KomgaLoginScreen : Screen() {
                                 prefs.password = password
                                 navigator.pop()
                             } else {
-                                errorMessage = "登录失败，请检查用户名和密码"
+                                errorMessage = "登录失败，请检查邮箱和密码"
                             }
                         }
                     },

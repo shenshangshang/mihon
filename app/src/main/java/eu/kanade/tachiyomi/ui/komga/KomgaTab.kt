@@ -28,22 +28,16 @@ data object KomgaTab : Tab {
         }
 
     override suspend fun onReselect(navigator: Navigator) {
-        // If deep in browse stack, pop back to BrowseSourceScreen
-        val hasBrowse = navigator.items.any { it is BrowseSourceScreen }
-        if (hasBrowse) {
-            while (navigator.lastItem !is BrowseSourceScreen && navigator.canPop) {
-                navigator.pop()
-            }
-        }
+        // Pop back to root when reselecting the tab
+        navigator.popUntilRoot()
     }
 
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         LaunchedEffect(Unit) {
-            // Only push if not already on BrowseSourceScreen
+            // Only push BrowseSourceScreen if it's not already on the stack
             if (navigator.lastItem !is BrowseSourceScreen) {
-                navigator.popUntilRoot()
                 navigator.push(BrowseSourceScreen(KomgaSource.ID, null))
             }
         }

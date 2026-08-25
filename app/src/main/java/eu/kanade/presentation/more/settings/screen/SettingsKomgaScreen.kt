@@ -68,8 +68,12 @@ object SettingsKomgaScreen : SearchableSettings {
                     testResult = "测试中..."
                     scope.launch {
                         try {
+                            val client = okhttp3.OkHttpClient.Builder()
+                                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                                .build()
                             val ok = tachiyomi.source.komga.api.KomgaApi(
-                                okhttp3.OkHttpClient(),
+                                client,
                                 prefs,
                             ).testConnection()
                             testResult = if (ok) "连接成功 ✓" else "连接失败 ✗"
