@@ -120,14 +120,8 @@ data class BrowseSourceScreen(
                     }
                 }
                 seriesQuery != null -> {
-                    // Back from series book listing -> return to library
-                    val parts = seriesQuery.removePrefix("series://").split("/", limit = 2)
-                    val libId = parts.getOrElse(0) { "" }
-                    if (libId.isNotBlank()) {
-                        viewModel.setListing(Listing.Search("lib://$libId", FilterList()))
-                    } else {
-                        viewModel.setListing(Listing.Search("", FilterList()))
-                    }
+                    // Back from series book listing -> return to libraries root
+                    viewModel.setListing(Listing.Search("", FilterList()))
                 }
                 dirQuery != null -> {
                     val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }

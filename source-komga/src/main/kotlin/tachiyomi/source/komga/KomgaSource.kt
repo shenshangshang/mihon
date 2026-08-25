@@ -152,7 +152,7 @@ class KomgaSource(
         }
         if (pathsWithUrl.isEmpty()) return allSeries.map { series ->
             series.toSManga(preferences.baseUrl).apply {
-                url = "$SERIES_PREFIX${series.libraryId}/${series.id}"
+                url = "$SERIES_PREFIX${series.id}"
                 memo = buildJsonObject {
                     put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
                 }
@@ -190,7 +190,7 @@ class KomgaSource(
 
             if (relativeSegments.size == currentSegments.size + 1) {
                 items.add(series.toSManga(preferences.baseUrl).apply {
-                    url = "$SERIES_PREFIX${series.libraryId}/${series.id}"
+                    url = "$SERIES_PREFIX${series.id}"
                     memo = buildJsonObject {
                         put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
                     }
@@ -336,8 +336,9 @@ class KomgaSource(
         // Series card click -> show book directory tree for that series
         if (query.startsWith(SERIES_PREFIX)) {
             if (page > 1) return MangasPage(emptyList(), false)
-            val parts = query.removePrefix(SERIES_PREFIX).split("/", limit = 2)
-            val seriesId = parts.getOrElse(0) { return MangasPage(emptyList(), false) }
+            // Format: series://seriesId
+            val seriesId = query.removePrefix(SERIES_PREFIX).takeIf { it.isNotBlank() }
+                ?: return MangasPage(emptyList(), false)
             val books = getCachedBooks(seriesId)
             val items = buildBookDirectoryItems(books, seriesId, "", preferences.baseUrl)
             return MangasPage(items, false)
