@@ -24,9 +24,9 @@ fun LogoHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_mihon),
+            painter = painterResource(R.drawable.ic_komga_logo),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = androidx.compose.ui.graphics.Color.Unspecified,
             modifier = Modifier
                 .padding(iconPadding)
                 .size(64.dp),
