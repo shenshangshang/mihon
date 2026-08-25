@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient
 import tachiyomi.source.komga.api.KomgaApi
 import tachiyomi.source.komga.api.toSChapter
 import tachiyomi.source.komga.api.toSManga
+import tachiyomi.source.komga.dto.BookDto
 import tachiyomi.source.komga.dto.LibraryDto
 import tachiyomi.source.komga.dto.SeriesDto
 import java.util.concurrent.TimeUnit
@@ -73,7 +74,11 @@ class KomgaSource(
     @Volatile
     private var seriesCache: Pair<List<SeriesDto>, Long>? = null
     @Volatile
+    private var seriesCacheLibId: String? = null
+    @Volatile
     private var librariesCache: Pair<List<LibraryDto>, Long>? = null
+    @Volatile
+    private var booksCache: Pair<String, List<BookDto>>? = null
     private val cacheTtl = 5 * 60 * 1000L
 
     override fun getFilterList(): FilterList = FilterList(
@@ -106,18 +111,21 @@ class KomgaSource(
 
     private fun getCachedSeries(libraryId: String? = null): List<SeriesDto> {
         val cached = seriesCache
-        if (cached != null && System.currentTimeMillis() - cached.second < cacheTtl) {
+        if (cached != null && seriesCacheLibId == libraryId && System.currentTimeMillis() - cached.second < cacheTtl) {
             return cached.first
         }
         val series = api.getAllSeries(libraryId)
-        seriesCache = series to System.currentTimeMillis()
-        return series
+        val readyIds = api.getReadyBookSeriesIds(libraryId)
+        val filtered = series.filter { it.id in readyIds }
+        seriesCache = filtered to System.currentTimeMillis()
+        seriesCacheLibId = libraryId
+        return filtered
     }
 
-    private fun createLibrarySManga(lib: LibraryDto): SManga = SManga.create().apply {
+    private fun createLibrarySManga(lib: LibraryDto, coverUrl: String? = null): SManga = SManga.create().apply {
         title = lib.name
         url = "$LIB_PREFIX${lib.id}"
-        thumbnail_url = null
+        thumbnail_url = coverUrl?.takeIf { it.isNotBlank() }
         status = SManga.UNKNOWN
         initialized = true
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_LIBRARY)) }
@@ -142,7 +150,14 @@ class KomgaSource(
         val pathsWithUrl = allSeries.mapNotNull { series ->
             series.url?.takeIf { it.isNotBlank() }?.let { series to it }
         }
-        if (pathsWithUrl.isEmpty()) return allSeries.map { it.toSManga(preferences.baseUrl) }
+        if (pathsWithUrl.isEmpty()) return allSeries.map { series ->
+            series.toSManga(preferences.baseUrl).apply {
+                memo = buildJsonObject {
+                    put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
+                    put(MEMO_QUERY, JsonPrimitive("$SERIES_PREFIX${series.libraryId}/${series.id}"))
+                }
+            }
+        }
 
         val splitPaths = pathsWithUrl.map { (_, path) -> path.split("/").filter { it.isNotBlank() } }
         val commonPrefix = findCommonPrefixSegments(splitPaths)
@@ -174,7 +189,12 @@ class KomgaSource(
             val nextSegment = relativeSegments[currentSegments.size]
 
             if (relativeSegments.size == currentSegments.size + 1) {
-                items.add(series.toSManga(preferences.baseUrl))
+                items.add(series.toSManga(preferences.baseUrl).apply {
+                    memo = buildJsonObject {
+                        put(MEMO_KIND, JsonPrimitive(KIND_SERIES))
+                        put(MEMO_QUERY, JsonPrimitive("$SERIES_PREFIX${series.libraryId}/${series.id}"))
+                    }
+                })
             } else if (nextSegment !in seenDirs) {
                 seenDirs.add(nextSegment)
                 val dirPath = (currentSegments + nextSegment).joinToString("/")
@@ -193,12 +213,92 @@ class KomgaSource(
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_DIRECTORY)) }
     }
 
+    // --- Book directory tree (inside a series) ---
+
+    @Volatile
+    private var booksCacheTime: Long = 0L
+
+    private fun getCachedBooks(seriesId: String): List<BookDto> {
+        val cached = booksCache
+        if (cached != null && cached.first == seriesId &&
+            System.currentTimeMillis() - booksCacheTime < cacheTtl
+        ) {
+            return cached.second
+        }
+        val books = api.getAllBooksBySeries(seriesId)
+        booksCache = seriesId to books
+        booksCacheTime = System.currentTimeMillis()
+        return books
+    }
+
+    private fun buildBookDirectoryItems(
+        allBooks: List<BookDto>,
+        seriesId: String,
+        currentPath: String,
+        baseUrl: String,
+    ): List<SManga> {
+        val currentSegments = if (currentPath.isBlank()) emptyList()
+        else currentPath.split("/").filter { it.isNotBlank() }
+
+        val items = mutableListOf<SManga>()
+        val seenDirs = mutableSetOf<String>()
+
+        for (book in allBooks) {
+            val dirPath = book.directoryPath ?: ""
+            val segments = dirPath.split("/").filter { it.isNotBlank() }
+
+            // Books at current level (no deeper path)
+            if (segments.size == currentSegments.size &&
+                (currentSegments.isEmpty() || segments == currentSegments)
+            ) {
+                items.add(createBookSManga(book, seriesId, baseUrl))
+                continue
+            }
+
+            // Books deeper than current level — extract subdirectory
+            if (segments.size > currentSegments.size &&
+                (currentSegments.isEmpty() || segments.subList(0, currentSegments.size) == currentSegments)
+            ) {
+                val nextSegment = segments[currentSegments.size]
+                if (nextSegment !in seenDirs) {
+                    seenDirs.add(nextSegment)
+                    val subPath = (currentSegments + nextSegment).joinToString("/")
+                    items.add(createBookDirectorySManga(nextSegment, seriesId, subPath))
+                }
+            }
+        }
+        return items
+    }
+
+    private fun createBookSManga(book: BookDto, seriesId: String, baseUrl: String): SManga = SManga.create().apply {
+        title = book.metadata.title.ifBlank { book.name }
+        url = "$baseUrl/api/v1/books/${book.id}"
+        thumbnail_url = "$baseUrl/api/v1/books/${book.id}/thumbnail"
+        status = SManga.UNKNOWN
+        initialized = true
+        memo = buildJsonObject {
+            put(MEMO_KIND, JsonPrimitive(KIND_BOOK))
+            put(MEMO_QUERY, JsonPrimitive("$BOOK_PREFIX$seriesId/${book.id}"))
+        }
+    }
+
+    private fun createBookDirectorySManga(name: String, seriesId: String, subPath: String): SManga = SManga.create().apply {
+        title = name
+        url = "$BOOKDIR_PREFIX$seriesId/$subPath"
+        thumbnail_url = null
+        status = SManga.UNKNOWN
+        initialized = true
+        memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_BOOK_DIRECTORY)) }
+    }
+
     // --- Source interface (suspend API, overrides CatalogueSource defaults) ---
 
     override suspend fun getPopularManga(page: Int): MangasPage {
         if (page > 1) return MangasPage(emptyList(), false)
         val libraries = getCachedLibraries()
-        val items = libraries.map { createLibrarySManga(it) }
+        val items = libraries.map { lib ->
+            createLibrarySManga(lib, api.getFirstSeriesThumbnail(lib.id))
+        }
         return MangasPage(items, false)
     }
 
@@ -233,6 +333,29 @@ class KomgaSource(
             return MangasPage(items, false)
         }
 
+        // Series card click -> show book directory tree for that series
+        if (query.startsWith(SERIES_PREFIX)) {
+            if (page > 1) return MangasPage(emptyList(), false)
+            val parts = query.removePrefix(SERIES_PREFIX).split("/", limit = 2)
+            val seriesId = parts.getOrElse(0) { return MangasPage(emptyList(), false) }
+            val books = getCachedBooks(seriesId)
+            val items = buildBookDirectoryItems(books, seriesId, "", preferences.baseUrl)
+            return MangasPage(items, false)
+        }
+
+        // Book directory card click -> show subdirectories/books at deeper level
+        if (query.startsWith(BOOKDIR_PREFIX)) {
+            if (page > 1) return MangasPage(emptyList(), false)
+            val rest = query.removePrefix(BOOKDIR_PREFIX)
+            val slashIdx = rest.indexOf("/")
+            if (slashIdx < 0) return MangasPage(emptyList(), false)
+            val seriesId = rest.substring(0, slashIdx)
+            val subPath = rest.substring(slashIdx + 1)
+            val books = getCachedBooks(seriesId)
+            val items = buildBookDirectoryItems(books, seriesId, subPath, preferences.baseUrl)
+            return MangasPage(items, false)
+        }
+
         // Root listing -> show libraries
         if (query.isBlank()) {
             if (page > 1) return MangasPage(emptyList(), false)
@@ -240,7 +363,9 @@ class KomgaSource(
             if (libraries.isNotEmpty()) {
                 librariesCache = libraries to System.currentTimeMillis()
             }
-            val items = libraries.map { createLibrarySManga(it) }
+            val items = libraries.map { lib ->
+                createLibrarySManga(lib, api.getFirstSeriesThumbnail(lib.id))
+            }
             return MangasPage(items, false)
         }
 
@@ -275,6 +400,33 @@ class KomgaSource(
         fetchDetails: Boolean,
         fetchChapters: Boolean,
     ): SMangaUpdate {
+        // Book-level manga (opened from the book directory tree) — the
+        // book itself is the single chapter.
+        if (manga.url.contains("/api/v1/books/")) {
+            val bookId = extractBookId(manga.url)
+            val book = api.getBookById(bookId)
+            val updatedManga = if (fetchDetails && book != null) {
+                manga.copy(
+                    title = book.metadata.title.ifBlank { book.name },
+                    thumbnail_url = "$baseUrl/api/v1/books/$bookId/thumbnail",
+                    initialized = true,
+                )
+            } else {
+                manga
+            }
+            val updatedChapters = if (fetchChapters && book != null) {
+                val isReadable = book.media.mediaProfile != "EPUB" || book.media.epubDivinaCompatible
+                if (isReadable) {
+                    listOf(book.toSChapter(preferences.baseUrl))
+                } else {
+                    emptyList()
+                }
+            } else {
+                chapters
+            }
+            return SMangaUpdate(updatedManga, updatedChapters)
+        }
+
         val seriesId = extractSeriesId(manga.url)
 
         val updatedManga = if (fetchDetails) {
@@ -303,13 +455,20 @@ class KomgaSource(
 
         val book = api.getBookById(bookId)
         if (book?.media?.mediaProfile == "VIDEO" || book?.media?.mediaProfile == "AUDIO") {
-            val streamUrl = "${preferences.baseUrl}/api/v1/books/$bookId/stream"
+            // Mihon's reader is image-only — it cannot play video/audio.
+            // Return the stream URL so the reader's "Open in WebView" button
+            // lets the user play it in the system browser.
+            val streamUrl = "$baseUrl/api/v1/books/$bookId/stream"
             return listOf(Page(1, imageUrl = streamUrl))
         }
 
         val pages = api.getPages(bookId)
+        if (pages.isEmpty()) return emptyList()
+
         return pages.map { p ->
-            val url = "${preferences.baseUrl}/api/v1/books/$bookId/pages/${p.number}" +
+            // Non-image pages (e.g. PDF) get ?convert=png so Komga renders
+            // them as images. Supported image types load directly.
+            val url = "$baseUrl/api/v1/books/$bookId/pages/${p.number}" +
                 if (p.mediaType !in KomgaApi.SUPPORTED_IMAGE_TYPES) "?convert=png" else ""
             Page(p.number, imageUrl = url)
         }
@@ -325,9 +484,16 @@ class KomgaSource(
         const val ID = 69420L
         const val DIR_PREFIX = "dir://"
         const val LIB_PREFIX = "lib://"
+        const val SERIES_PREFIX = "series://"
+        const val BOOK_PREFIX = "book://"
+        const val BOOKDIR_PREFIX = "bookdir://"
         const val MEMO_KIND = "mihon.kind"
+        const val MEMO_QUERY = "mihon.query"
         const val KIND_DIRECTORY = "directory"
         const val KIND_LIBRARY = "library"
+        const val KIND_SERIES = "series"
+        const val KIND_BOOK = "book"
+        const val KIND_BOOK_DIRECTORY = "book_directory"
     }
 }
 

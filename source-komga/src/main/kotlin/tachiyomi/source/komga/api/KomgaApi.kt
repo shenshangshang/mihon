@@ -51,6 +51,23 @@ class KomgaApi(
     fun getLibraries(): List<LibraryDto> =
         json.decodeFromString(execute("/api/v1/libraries"))
 
+    fun getFirstSeriesThumbnail(libraryId: String): String? {
+        return try {
+            val urlBuilder = ("$baseUrl/api/v1/series").toHttpUrl().newBuilder()
+                .addQueryParameter("page", "0")
+                .addQueryParameter("size", "1")
+                .addQueryParameter("library_id", libraryId)
+                .addQueryParameter("deleted", "false")
+                .addQueryParameter("sort", "metadata.titleSort,asc")
+            val builtUrl = urlBuilder.build()
+            val path = builtUrl.encodedPath + "?" + builtUrl.encodedQuery
+            val data = json.decodeFromString<PageWrapperDto<SeriesDto>>(execute(path))
+            data.content.firstOrNull()?.let { "$baseUrl/api/v1/series/${it.id}/thumbnail" }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun getSeries(
         page: Int,
         size: Int = 25,
@@ -96,6 +113,31 @@ class KomgaApi(
             page++
         }
         return all
+    }
+
+    fun getReadyBookSeriesIds(libraryId: String? = null): Set<String> {
+        val allSeriesIds = mutableSetOf<String>()
+        var page = 0
+        var hasNext = true
+        while (hasNext) {
+            val urlBuilder = ("$baseUrl/api/v1/books").toHttpUrl().newBuilder()
+                .addQueryParameter("page", page.toString())
+                .addQueryParameter("size", "500")
+                .addQueryParameter("media_status", "READY")
+                .addQueryParameter("deleted", "false")
+            libraryId?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("library_id", it) }
+            val builtUrl = urlBuilder.build()
+            val path = builtUrl.encodedPath + "?" + builtUrl.encodedQuery
+            val data = try {
+                json.decodeFromString<PageWrapperDto<BookDto>>(execute(path))
+            } catch (e: Exception) {
+                return allSeriesIds
+            }
+            data.content.forEach { allSeriesIds.add(it.seriesId) }
+            hasNext = !data.last
+            page++
+        }
+        return allSeriesIds
     }
 
     fun getSeriesById(seriesId: String): SeriesDto? =

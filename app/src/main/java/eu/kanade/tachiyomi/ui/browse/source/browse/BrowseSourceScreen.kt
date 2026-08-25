@@ -101,7 +101,34 @@ data class BrowseSourceScreen(
             val query = state.listing.query
             val dirQuery = query?.takeIf { it.startsWith("dir://") }
             val libQuery = query?.takeIf { it.startsWith("lib://") }
+            val seriesQuery = query?.takeIf { it.startsWith("series://") }
+            val bookDirQuery = query?.takeIf { it.startsWith("bookdir://") }
             when {
+                bookDirQuery != null -> {
+                    // Walking up inside a series' book directory tree
+                    val rest = bookDirQuery.removePrefix("bookdir://")
+                    val slashIdx = rest.indexOf("/")
+                    val seriesId = rest.substring(0, slashIdx)
+                    val subPath = rest.substring(slashIdx + 1)
+                    val segments = subPath.split("/").filter { it.isNotBlank() }
+                    if (segments.size > 1) {
+                        val parentPath = segments.dropLast(1).joinToString("/")
+                        viewModel.setListing(Listing.Search("bookdir://$seriesId/$parentPath", FilterList()))
+                    } else {
+                        // Back to series root (book listing)
+                        viewModel.setListing(Listing.Search("series://$seriesId", FilterList()))
+                    }
+                }
+                seriesQuery != null -> {
+                    // Back from series book listing -> return to library
+                    val parts = seriesQuery.removePrefix("series://").split("/", limit = 2)
+                    val libId = parts.getOrElse(0) { "" }
+                    if (libId.isNotBlank()) {
+                        viewModel.setListing(Listing.Search("lib://$libId", FilterList()))
+                    } else {
+                        viewModel.setListing(Listing.Search("", FilterList()))
+                    }
+                }
                 dirQuery != null -> {
                     val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
                     if (segments.size > 1) {
@@ -260,7 +287,9 @@ data class BrowseSourceScreen(
                     val query = state.listing.query
                     val dirQuery = query?.takeIf { it.startsWith("dir://") }
                     val libQuery = query?.takeIf { it.startsWith("lib://") }
-                    if (dirQuery != null || libQuery != null) {
+                    val seriesQuery = query?.takeIf { it.startsWith("series://") }
+                    val bookDirQuery = query?.takeIf { it.startsWith("bookdir://") }
+                    if (dirQuery != null || libQuery != null || seriesQuery != null || bookDirQuery != null) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -299,7 +328,7 @@ data class BrowseSourceScreen(
                                         modifier = Modifier.size(MaterialTheme.padding.small),
                                         tint = MaterialTheme.colorScheme.outline,
                                     )
-                                    val isLast = index == segments.lastIndex
+                                    val isLast = index == segments.lastIndex && seriesQuery == null
                                     Text(
                                         text = segment,
                                         style = MaterialTheme.typography.labelLarge,
@@ -309,6 +338,51 @@ data class BrowseSourceScreen(
                                         else Modifier.clickable {
                                             val targetPath = segments.subList(0, index + 1).joinToString("/")
                                             viewModel.setListing(Listing.Search("dir://$targetPath", FilterList()))
+                                        },
+                                    )
+                                }
+                            }
+                            if (seriesQuery != null) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(MaterialTheme.padding.small),
+                                    tint = MaterialTheme.colorScheme.outline,
+                                )
+                                Text(
+                                    text = "系列",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (bookDirQuery == null) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.primary,
+                                    modifier = if (bookDirQuery == null) Modifier
+                                    else Modifier.clickable {
+                                        viewModel.setListing(Listing.Search(seriesQuery, FilterList()))
+                                    },
+                                )
+                            }
+                            if (bookDirQuery != null) {
+                                val rest = bookDirQuery.removePrefix("bookdir://")
+                                val slashIdx = rest.indexOf("/")
+                                val subPath = if (slashIdx >= 0) rest.substring(slashIdx + 1) else ""
+                                val segments = subPath.split("/").filter { it.isNotBlank() }
+                                segments.forEachIndexed { index, segment ->
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(MaterialTheme.padding.small),
+                                        tint = MaterialTheme.colorScheme.outline,
+                                    )
+                                    val isLast = index == segments.lastIndex
+                                    Text(
+                                        text = segment,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (isLast) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.primary,
+                                        modifier = if (isLast) Modifier
+                                        else Modifier.clickable {
+                                            val seriesId = rest.substring(0, slashIdx)
+                                            val targetPath = segments.subList(0, index + 1).joinToString("/")
+                                            viewModel.setListing(Listing.Search("bookdir://$seriesId/$targetPath", FilterList()))
                                         },
                                     )
                                 }
@@ -337,8 +411,14 @@ data class BrowseSourceScreen(
                         } catch (e: Exception) { null }
                     }
                     when (memoKind) {
-                        "directory", "library" -> {
+                        "directory", "library", "series", "book_directory" -> {
                             viewModel.setListing(Listing.Search(manga.url, FilterList()))
+                        }
+                        "book" -> {
+                            // Single book opened as manga — its URL is the
+                            // Komga book API URL, which getMangaUpdate
+                            // recognises via extractBookId.
+                            navigator.push(MangaScreen(manga.id, true))
                         }
                         else -> {
                             navigator.push(MangaScreen(manga.id, true))
@@ -351,7 +431,9 @@ data class BrowseSourceScreen(
                             it["mihon.kind"]?.jsonPrimitive?.contentOrNull
                         } catch (e: Exception) { null }
                     }
-                    if (memoKind != "directory" && memoKind != "library") {
+                    if (memoKind != "directory" && memoKind != "library" &&
+                        memoKind != "series" && memoKind != "book_directory"
+                    ) {
                         scope.launchIO {
                             val duplicates = viewModel.getDuplicateLibraryManga(manga)
                             when {
