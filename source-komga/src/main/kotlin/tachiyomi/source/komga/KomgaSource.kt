@@ -406,11 +406,11 @@ class KomgaSource(
             val bookId = extractBookId(manga.url)
             val book = api.getBookById(bookId)
             val updatedManga = if (fetchDetails && book != null) {
-                manga.copy(
-                    title = book.metadata.title.ifBlank { book.name },
-                    thumbnail_url = "$baseUrl/api/v1/books/$bookId/thumbnail",
-                    initialized = true,
-                )
+                manga.apply {
+                    title = book.metadata.title.ifBlank { book.name }
+                    thumbnail_url = "$baseUrl/api/v1/books/$bookId/thumbnail"
+                    initialized = true
+                }
             } else {
                 manga
             }
