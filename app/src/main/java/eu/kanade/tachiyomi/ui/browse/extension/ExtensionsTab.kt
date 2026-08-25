@@ -108,7 +108,7 @@ fun extensionsTab(
 }
 
 @Composable
-private fun ExtensionUninstallConfirmation(
+internal fun ExtensionUninstallConfirmation(
     extensionName: String,
     onClickConfirm: () -> Unit,
     onDismissRequest: () -> Unit,

@@ -5,7 +5,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.VolunteerActivism
+import androidx.compose.material.icons.automirrored.outlined.CompareArrows
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.QueryStats
@@ -42,6 +44,8 @@ fun MoreScreen(
     onClickSettings: () -> Unit,
     onClickSupport: () -> Unit,
     onClickAbout: () -> Unit,
+    onClickExtensions: () -> Unit = {},
+    onClickMigrate: () -> Unit = {},
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -121,6 +125,20 @@ fun MoreScreen(
                     title = stringResource(MR.strings.label_data_storage),
                     icon = Icons.Outlined.Storage,
                     onPreferenceClick = onClickDataAndStorage,
+                )
+            }
+            item {
+                TextPreferenceWidget(
+                    title = stringResource(MR.strings.label_extensions),
+                    icon = Icons.Outlined.Extension,
+                    onPreferenceClick = onClickExtensions,
+                )
+            }
+            item {
+                TextPreferenceWidget(
+                    title = stringResource(MR.strings.label_migration),
+                    icon = Icons.AutoMirrored.Outlined.CompareArrows,
+                    onPreferenceClick = onClickMigrate,
                 )
             }
 

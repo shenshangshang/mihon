@@ -1,14 +1,17 @@
 package eu.kanade.tachiyomi.ui.browse.source.browse
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.NewReleases
@@ -26,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,6 +49,7 @@ import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.util.AssistContentScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.ui.browse.extension.details.SourcePreferencesScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceViewModel.Listing
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
@@ -53,6 +58,8 @@ import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
@@ -89,7 +96,15 @@ data class BrowseSourceScreen(
 
         val navigator = LocalNavigator.currentOrThrow
         val navigateUp: () -> Unit = {
-            when {
+            val dirQuery = state.listing.query?.takeIf { it.startsWith("dir://") }
+            if (dirQuery != null) {
+                val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
+                if (segments.size > 1) {
+                    viewModel.setListing(Listing.Search("dir://" + segments.dropLast(1).joinToString("/"), FilterList()))
+                } else {
+                    viewModel.setListing(Listing.Search("", FilterList()))
+                }
+            } else when {
                 !state.isUserQuery && state.toolbarQuery != null -> viewModel.setToolbarQuery(null)
                 else -> navigator.pop()
             }
@@ -208,6 +223,50 @@ data class BrowseSourceScreen(
                     }
 
                     HorizontalDivider()
+
+                    // Breadcrumb navigation for directory tree browsing
+                    val dirQuery = state.listing.query?.takeIf { it.startsWith("dir://") }
+                    if (dirQuery != null) {
+                        val segments = dirQuery.removePrefix("dir://").split("/").filter { it.isNotBlank() }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = MaterialTheme.padding.small, vertical = MaterialTheme.padding.extraSmall),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                        ) {
+                            Text(
+                                text = stringResource(MR.strings.label_library),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable {
+                                    viewModel.setListing(Listing.Search("", FilterList()))
+                                },
+                            )
+                            segments.forEachIndexed { index, segment ->
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(MaterialTheme.padding.small),
+                                    tint = MaterialTheme.colorScheme.outline,
+                                )
+                                val isLast = index == segments.lastIndex
+                                Text(
+                                    text = segment,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (isLast) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.primary,
+                                    modifier = if (isLast) Modifier
+                                    else Modifier.clickable {
+                                        val targetPath = segments.subList(0, index + 1).joinToString("/")
+                                        viewModel.setListing(Listing.Search("dir://$targetPath", FilterList()))
+                                    },
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                    }
                 }
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -222,18 +281,36 @@ data class BrowseSourceScreen(
                 onWebViewClick = onWebViewClick,
                 onHelpClick = { uriHandler.openUri(Constants.URL_HELP) },
                 onLocalSourceHelpClick = onHelpClick,
-                onMangaClick = { navigator.push((MangaScreen(it.id, true))) },
+                onMangaClick = { manga ->
+                    val memoKind = manga.memo?.let {
+                        try {
+                            it["mihon.kind"]?.jsonPrimitive?.contentOrNull
+                        } catch (e: Exception) { null }
+                    }
+                    if (memoKind == "directory") {
+                        viewModel.setListing(Listing.Search(manga.url, FilterList()))
+                    } else {
+                        navigator.push(MangaScreen(manga.id, true))
+                    }
+                },
                 onMangaLongClick = { manga ->
-                    scope.launchIO {
-                        val duplicates = viewModel.getDuplicateLibraryManga(manga)
-                        when {
-                            manga.favorite -> viewModel.setDialog(BrowseSourceViewModel.Dialog.RemoveManga(manga))
-                            duplicates.isNotEmpty() -> viewModel.setDialog(
-                                BrowseSourceViewModel.Dialog.AddDuplicateManga(manga, duplicates),
-                            )
-                            else -> viewModel.addFavorite(manga)
+                    val memoKind = manga.memo?.let {
+                        try {
+                            it["mihon.kind"]?.jsonPrimitive?.contentOrNull
+                        } catch (e: Exception) { null }
+                    }
+                    if (memoKind != "directory") {
+                        scope.launchIO {
+                            val duplicates = viewModel.getDuplicateLibraryManga(manga)
+                            when {
+                                manga.favorite -> viewModel.setDialog(BrowseSourceViewModel.Dialog.RemoveManga(manga))
+                                duplicates.isNotEmpty() -> viewModel.setDialog(
+                                    BrowseSourceViewModel.Dialog.AddDuplicateManga(manga, duplicates),
+                                )
+                                else -> viewModel.addFavorite(manga)
+                            }
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 },
             )

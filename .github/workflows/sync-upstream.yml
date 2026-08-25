@@ -1,0 +1,91 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # Every day at 08:00 UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Merge upstream into main
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/mihonapp/mihon.git
+          git fetch upstream
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          UPSTREAM=upstream/main
+          BASE=$(git rev-parse HEAD)
+          echo "base_sha=$BASE" >> $GITHUB_OUTPUT
+          echo "upstream_sha=$(git rev-parse $UPSTREAM)" >> $GITHUB_OUTPUT
+
+          if git merge-base --is-ancestor $UPSTREAM $BASE; then
+            echo "No upstream changes to merge."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Upstream has new commits."
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Attempt merge
+        id: merge
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          if git merge upstream/main --no-edit; then
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "Merge conflict detected, aborting merge."
+            git merge --abort
+            echo "merge_success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push merged main
+        if: steps.merge.outputs.merge_success == 'true'
+        run: |
+          git push origin main
+
+      - name: Create PR on conflict
+        if: steps.merge.outputs.merge_success == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="sync-upstream-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+          git merge upstream/main --no-edit || true
+          # Resolve trivial conflicts by preferring upstream where possible
+          git diff --name-only --diff-filter=U > /tmp/conflicts.txt
+          if [ -s /tmp/conflicts.txt ]; then
+            echo "Conflicted files:"
+            cat /tmp/conflicts.txt
+          fi
+          git add -A || true
+          git commit -m "chore: merge upstream (conflicts need manual resolution)" --no-verify || true
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: sync upstream $(date +%Y-%m-%d)" \
+            --body "Automated upstream sync from mihonapp/mihon. This PR was created because the automatic merge had conflicts that need manual resolution. Conflicted files:" \
+            --base main \
+            --head "$BRANCH" \
+            --label "sync-upstream"

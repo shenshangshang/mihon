@@ -22,6 +22,7 @@ import tachiyomi.domain.source.model.StubSource
 import tachiyomi.domain.source.repository.StubSourceRepository
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.source.local.LocalSource
+import tachiyomi.source.komga.KomgaSource
 import java.util.concurrent.ConcurrentHashMap
 
 @Inject
@@ -31,6 +32,7 @@ class AndroidSourceManager(
     private val extensionManager: ExtensionManager,
     private val sourceRepository: StubSourceRepository,
     private val localSource: LocalSource,
+    private val komgaSource: KomgaSource,
     private val downloadManager: Lazy<DownloadManager>,
 ) : SourceManager {
 
@@ -50,7 +52,10 @@ class AndroidSourceManager(
             extensionManager.installedExtensionsFlow
                 .collectLatest { extensions ->
                     val mutableMap = ConcurrentHashMap<Long, Source>(
-                        mapOf(LocalSource.ID to localSource),
+                        mapOf(
+                            LocalSource.ID to localSource,
+                            KomgaSource.ID to komgaSource,
+                        ),
                     )
                     extensions.forEach { extension ->
                         extension.sources.forEach {

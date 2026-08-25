@@ -36,6 +36,7 @@ import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
+import eu.kanade.tachiyomi.ui.komga.KomgaTab
 import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
@@ -67,7 +68,7 @@ object HomeScreen : Screen() {
         LibraryTab,
         UpdatesTab,
         HistoryTab,
-        BrowseTab,
+        KomgaTab,
         MoreTab,
     )
 
@@ -148,7 +149,7 @@ object HomeScreen : Screen() {
                                 if (it.toExtensions) {
                                     BrowseTab.showExtension()
                                 }
-                                BrowseTab
+                                KomgaTab
                             }
                             is Tab.More -> MoreTab
                         }
@@ -241,6 +242,8 @@ object HomeScreen : Screen() {
                         count = count,
                         count,
                     )
+
+                    else -> ""
 
                     else -> null
                 }
