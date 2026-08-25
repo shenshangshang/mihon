@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
-import androidx.compose.material.icons.outlined.Bookstore
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Explore
@@ -211,7 +210,7 @@ object SettingsMainScreen : Screen() {
         Item(
             titleRes = MR.strings.browse,
             formatSubtitle = { "Komga 服务器配置" },
-            icon = Icons.Outlined.Bookstore,
+            icon = Icons.Outlined.CollectionsBookmark,
             screen = SettingsKomgaScreen,
         ),
         Item(

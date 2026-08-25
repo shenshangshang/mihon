@@ -243,8 +243,6 @@ object HomeScreen : Screen() {
                         count,
                     )
 
-                    else -> ""
-
                     else -> null
                 }
                 Text(

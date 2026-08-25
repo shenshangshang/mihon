@@ -19,6 +19,7 @@ dependencies {
     implementation(projects.sourceApi)
     implementation(projects.i18n)
     implementation(projects.domain)
+    implementation(projects.core.common)
 
     implementation(libs.metro.runtime)
     implementation(libs.bundles.serialization)

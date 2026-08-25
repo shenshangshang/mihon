@@ -1,11 +1,12 @@
 package eu.kanade.tachiyomi.ui.komga
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bookstore
+import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.util.Tab
@@ -23,7 +24,7 @@ data object KomgaTab : Tab {
             return TabOptions(
                 index = 3u,
                 title = "书城",
-                icon = Icons.Outlined.Bookstore,
+                icon = Icons.Outlined.CollectionsBookmark,
             )
         }
 
