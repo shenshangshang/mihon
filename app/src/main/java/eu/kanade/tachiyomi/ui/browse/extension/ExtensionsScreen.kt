@@ -23,6 +23,7 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.extension.model.Extension
+import eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import eu.kanade.tachiyomi.util.system.isPackageInstalled
 import tachiyomi.i18n.MR
