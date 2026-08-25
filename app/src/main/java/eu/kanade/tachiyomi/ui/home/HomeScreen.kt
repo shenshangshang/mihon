@@ -130,7 +130,7 @@ object HomeScreen : Screen() {
 
             val goToLibraryTab = { tabNavigator.current = LibraryTab }
 
-            BackHandler(enabled = tabNavigator.current != LibraryTab, onBack = goToLibraryTab)
+            BackHandler(enabled = tabNavigator.current != LibraryTab && !navigator.canPop, onBack = goToLibraryTab)
 
             LaunchedEffect(Unit) {
                 launch {

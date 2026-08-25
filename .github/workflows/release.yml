@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  MIHON_GITHUB_RELEASE: true
+
 jobs:
   build:
     name: Build & Release APK
@@ -40,7 +43,12 @@ jobs:
             echo "tag=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build debug APK
+      - name: Build debug APK (with fixed signing)
+        env:
+          storeFileBase64: ${{ secrets.SHENSHANG_KEYSTORE_B64 }}
+          storePassword: ${{ secrets.SHENSHANG_KEYSTORE_PASS }}
+          keyAlias: ${{ secrets.SHENSHANG_KEY_ALIAS }}
+          keyPassword: ${{ secrets.SHENSHANG_KEY_PASS }}
         run: ./gradlew assembleDebug
 
       - name: Rename APKs
@@ -65,6 +73,7 @@ jobs:
             ### 安装
             - 现代手机安装 `app-arm64-v8a-debug` 版本
             - 不确定架构安装 `app-universal-debug` 版本
+            - 可直接覆盖安装，无需卸载旧版本
 
             ### 功能
             - 📚 多媒体库目录树浏览

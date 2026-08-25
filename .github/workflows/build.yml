@@ -20,6 +20,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  MIHON_GITHUB_RELEASE: true
+
 jobs:
   build:
     name: Build & Test App
@@ -38,8 +41,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Decode signing keystore
+        run: |
+          echo "${{ secrets.SHENSHANG_KEYSTORE_B64 }}" | base64 -d > $RUNNER_TEMP/shenshang.keystore
+
       - name: Run unit tests
         id: unit_tests
+        env:
+          storeFileBase64: ${{ secrets.SHENSHANG_KEYSTORE_B64 }}
+          storePassword: ${{ secrets.SHENSHANG_KEYSTORE_PASS }}
+          keyAlias: ${{ secrets.SHENSHANG_KEY_ALIAS }}
+          keyPassword: ${{ secrets.SHENSHANG_KEY_PASS }}
         run: ./gradlew testDebugUnitTest
 
       - name: Upload test report
@@ -50,6 +62,11 @@ jobs:
           path: app/build/reports/tests/testDebugUnitTest
 
       - name: Build debug APK
+        env:
+          storeFileBase64: ${{ secrets.SHENSHANG_KEYSTORE_B64 }}
+          storePassword: ${{ secrets.SHENSHANG_KEYSTORE_PASS }}
+          keyAlias: ${{ secrets.SHENSHANG_KEY_ALIAS }}
+          keyPassword: ${{ secrets.SHENSHANG_KEY_PASS }}
         run: ./gradlew assembleDebug
 
       - name: Upload APK
