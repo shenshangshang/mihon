@@ -58,6 +58,7 @@ import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import mihon.feature.migration.dialog.MigrateMangaDialog
@@ -95,6 +96,7 @@ data class BrowseSourceScreen(
         val state by viewModel.state.collectAsState()
 
         val navigator = LocalNavigator.currentOrThrow
+        val scopeForTab = rememberCoroutineScope()
         val navigateUp: () -> Unit = {
             val query = state.listing.query
             val dirQuery = query?.takeIf { it.startsWith("dir://") }
@@ -105,16 +107,38 @@ data class BrowseSourceScreen(
                     if (segments.size > 1) {
                         viewModel.setListing(Listing.Search("dir://" + segments.dropLast(1).joinToString("/"), FilterList()))
                     } else {
-                        // Back from dir → return to library root
+                        // Back from dir -> return to library root
                         viewModel.setListing(Listing.Search("", FilterList()))
                     }
                 }
                 libQuery != null -> {
-                    // Back from library listing → return to libraries
+                    // Back from library listing -> return to libraries
                     viewModel.setListing(Listing.Search("", FilterList()))
                 }
                 !state.isUserQuery && state.toolbarQuery != null -> viewModel.setToolbarQuery(null)
+                sourceId == tachiyomi.source.komga.KomgaSource.ID -> {
+                    // At bookshelf root: pop this screen and switch back to the
+                    // Library tab. KomgaTab would otherwise re-push the screen
+                    // on recomposition, making back appear to do nothing.
+                    navigator.pop()
+                    scopeForTab.launch {
+                        eu.kanade.tachiyomi.ui.home.HomeScreen.openTab(
+                            eu.kanade.tachiyomi.ui.home.HomeScreen.Tab.Library(),
+                        )
+                    }
+                }
                 else -> navigator.pop()
+            }
+        }
+
+        // In directory-browse mode (Komga source), the system back button
+        // follows the same navigation logic as the toolbar up button:
+        // walk up the directory tree, and at the root pop + switch to Library.
+        // This BackHandler registers later than the Navigator's default
+        // pop handler, so it takes priority when enabled.
+        if (sourceId == tachiyomi.source.komga.KomgaSource.ID) {
+            androidx.activity.compose.BackHandler(enabled = true) {
+                navigateUp()
             }
         }
 

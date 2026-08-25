@@ -49,11 +49,7 @@ class KomgaApi(
     }
 
     fun getLibraries(): List<LibraryDto> =
-        try {
-            json.decodeFromString(execute("/api/v1/libraries"))
-        } catch (e: Exception) {
-            emptyList()
-        }
+        json.decodeFromString(execute("/api/v1/libraries"))
 
     fun getSeries(
         page: Int,

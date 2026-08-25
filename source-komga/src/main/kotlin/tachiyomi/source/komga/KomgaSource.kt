@@ -44,7 +44,7 @@ class KomgaSource(
     @Volatile
     private var seriesCache: Pair<List<SeriesDto>, Long>? = null
     @Volatile
-    private var librariesCache: List<LibraryDto>? = null
+    private var librariesCache: Pair<List<LibraryDto>, Long>? = null
     private val cacheTtl = 5 * 60 * 1000L
 
     override val id: Long = ID
@@ -57,17 +57,29 @@ class KomgaSource(
 
     override fun getFilterList(): FilterList = FilterList(
         listOf(
-            LibraryFilter(getCachedLibraries()),
+            LibraryFilter(cachedLibrariesOnly()),
             SortFilter(),
         ),
     )
 
+    /**
+     * Read-only cache access, safe for main thread (no network).
+     */
+    private fun cachedLibrariesOnly(): List<LibraryDto> = librariesCache?.first ?: emptyList()
+
     private fun getCachedLibraries(): List<LibraryDto> {
-        librariesCache?.let { return it }
+        librariesCache?.let { (libs, ts) ->
+            if (System.currentTimeMillis() - ts < cacheTtl) return libs
+        }
         return try {
             val libs = api.getLibraries()
-            librariesCache = libs
-            libs
+            if (libs.isNotEmpty()) {
+                librariesCache = libs to System.currentTimeMillis()
+                libs
+            } else {
+                // Don't cache empty results - could be a transient failure
+                emptyList()
+            }
         } catch (e: Exception) {
             emptyList()
         }
@@ -207,7 +219,12 @@ class KomgaSource(
         // Root listing → show libraries
         if (query.isBlank()) {
             if (page > 1) return MangasPage(emptyList(), false)
-            val libraries = getCachedLibraries()
+            // Direct API call: let errors propagate so the UI shows the real
+            // error (401/network) instead of a misleading "no results"
+            val libraries = api.getLibraries()
+            if (libraries.isNotEmpty()) {
+                librariesCache = libraries to System.currentTimeMillis()
+            }
             val items = libraries.map { createLibrarySManga(it) }
             return MangasPage(items, false)
         }
