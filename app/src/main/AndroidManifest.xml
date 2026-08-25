@@ -153,6 +153,7 @@
 
         <activity
             android:name=".ui.reader.ReaderActivity"
+            android:configChanges="uiMode|orientation|screenSize"
             android:exported="false"
             android:launchMode="singleTask">
             <intent-filter>

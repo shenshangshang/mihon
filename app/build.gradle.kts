@@ -300,6 +300,10 @@ dependencies {
     implementation(libs.webgpuviewer)
     implementation(libs.kim)
 
+    // Video / audio playback (Komga VIDEO/AUDIO books)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+
     // UI libraries
     implementation(libs.material)
     implementation(libs.flexibleAdapter)

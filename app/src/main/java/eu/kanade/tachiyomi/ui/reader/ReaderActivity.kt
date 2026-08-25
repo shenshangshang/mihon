@@ -78,6 +78,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.R2LPagerViewer
+import eu.kanade.tachiyomi.ui.reader.viewer.video.VideoViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewer
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
 import eu.kanade.tachiyomi.util.system.isNightMode
@@ -629,6 +630,20 @@ class ReaderActivity : BaseActivity() {
     @SuppressLint("RestrictedApi")
     private fun setChapters(viewerChapters: ViewerChapters) {
         binding.readerContainer.removeView(loadingIndicator)
+
+        // Auto-switch to VideoViewer for Komga VIDEO/AUDIO books.
+        // The page list is now loaded, so we can inspect the stream URL.
+        val firstPage = viewerChapters.currChapter.pages?.firstOrNull()
+        val isVideoContent = firstPage?.imageUrl?.contains("/stream") == true
+        val currentViewer = viewModel.state.value.viewer
+        if (isVideoContent && currentViewer !is VideoViewer) {
+            currentViewer?.destroy()
+            binding.viewerContainer.removeAllViews()
+            val videoViewer = VideoViewer(this)
+            viewModel.onViewerLoaded(videoViewer)
+            binding.viewerContainer.addView(videoViewer.getView())
+        }
+
         viewModel.state.value.viewer?.setChapters(viewerChapters)
 
         lifecycleScope.launchIO {

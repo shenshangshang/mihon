@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.L2RPagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.R2LPagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.VerticalPagerViewer
+import eu.kanade.tachiyomi.ui.reader.viewer.video.VideoViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewerContinuous
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonViewer
@@ -57,6 +58,13 @@ enum class ReadingMode(
         Direction.Vertical,
         ViewerType.Webtoon,
     ),
+    VIDEO(
+        MR.strings.video_viewer,
+        R.drawable.ic_reader_default_24dp,
+        0x00000006,
+        Direction.Vertical,
+        ViewerType.Video,
+    ),
     ;
 
     companion object {
@@ -77,6 +85,7 @@ enum class ReadingMode(
                     VERTICAL -> WebGpuViewer(activity, isReversed = false, isVertical = true)
                     WEBTOON -> WebGpuViewerContinuous(activity)
                     CONTINUOUS_VERTICAL -> WebGpuViewerContinuous(activity)
+                    VIDEO -> VideoViewer(activity)
                     DEFAULT -> throw IllegalStateException("Preference value must be resolved: $preference")
                 }
             }
@@ -86,6 +95,7 @@ enum class ReadingMode(
                 VERTICAL -> VerticalPagerViewer(activity)
                 WEBTOON -> WebtoonViewer(activity)
                 CONTINUOUS_VERTICAL -> WebtoonViewer(activity, isContinuous = false)
+                VIDEO -> VideoViewer(activity)
                 DEFAULT -> throw IllegalStateException("Preference value must be resolved: $preference")
             }
         }
@@ -99,5 +109,6 @@ enum class ReadingMode(
     sealed interface ViewerType {
         data object Pager : ViewerType
         data object Webtoon : ViewerType
+        data object Video : ViewerType
     }
 }
