@@ -57,7 +57,6 @@ class AndroidSourceManager(
                 KomgaSource.ID to komgaSource,
             ),
         )
-        _isInitialized.value = true
 
         scope.launch {
             extensionManager.installedExtensionsFlow
