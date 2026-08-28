@@ -53,6 +53,13 @@ jobs:
         if: steps.check.outputs.has_changes == 'true'
         run: |
           if git merge upstream/main --no-edit; then
+            # GITHUB_TOKEN can never push changes to .github/workflows/*.
+            # If the merge touched them, keep the fork's workflow files.
+            if ! git diff --quiet origin/main HEAD -- .github/workflows/; then
+              echo "Merge modified .github/workflows/, restoring fork versions."
+              git checkout origin/main -- .github/workflows/
+              git commit --amend --no-edit
+            fi
             echo "merge_success=true" >> $GITHUB_OUTPUT
           else
             echo "Merge conflict detected, aborting merge."
@@ -78,6 +85,9 @@ jobs:
             echo "Conflicted files:"
             cat /tmp/conflicts.txt
           fi
+          # Resolve workflow conflicts with the fork's version: GITHUB_TOKEN
+          # is not allowed to push commits that touch .github/workflows/*.
+          git checkout --ours -- .github/workflows/ || true
           git add -A || true
           git commit -m "chore: merge upstream (conflicts need manual resolution)" --no-verify || true
           git push origin "$BRANCH"
