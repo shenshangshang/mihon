@@ -208,6 +208,8 @@ dependencies {
     baselineProfile(projects.baselineProfile)
 
     implementation(projects.i18n)
+    implementation(projects.icons.materialSymbols)
+    implementation(projects.icons.simpleIcons)
     implementation(projects.core.archive)
     implementation(projects.core.common)
     implementation(projects.core.metro)
@@ -225,7 +227,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.materialIcons)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.animationGraphics)
     debugImplementation(libs.androidx.compose.uiTooling)
@@ -298,7 +299,6 @@ dependencies {
     implementation(libs.image.decoder)
 
     implementation(libs.webgpuviewer)
-    implementation(libs.kim)
 
     // Video / audio playback (Komga VIDEO/AUDIO books)
     implementation(libs.media3.exoplayer)
