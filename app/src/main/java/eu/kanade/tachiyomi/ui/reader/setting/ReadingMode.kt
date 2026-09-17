@@ -83,9 +83,14 @@ enum class ReadingMode(
                     LEFT_TO_RIGHT -> WebGpuViewer(activity, isReversed = false, isVertical = false)
                     RIGHT_TO_LEFT -> WebGpuViewer(activity, isReversed = true, isVertical = false)
                     VERTICAL -> WebGpuViewer(activity, isReversed = false, isVertical = true)
+<<<<<<< HEAD
                     WEBTOON -> WebGpuViewerContinuous(activity)
                     CONTINUOUS_VERTICAL -> WebGpuViewerContinuous(activity)
                     VIDEO -> VideoViewer(activity)
+=======
+                    WEBTOON -> WebGpuViewerContinuous(activity, useGap = false)
+                    CONTINUOUS_VERTICAL -> WebGpuViewerContinuous(activity, useGap = true)
+>>>>>>> upstream/main
                     DEFAULT -> throw IllegalStateException("Preference value must be resolved: $preference")
                 }
             }
