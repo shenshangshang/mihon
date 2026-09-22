@@ -9,6 +9,7 @@ import mihon.gradle.getLatestCommitTime
 import mihon.gradle.tasks.ReplaceShortcutsPlaceholderTask
 import java.io.FileInputStream
 import java.util.Properties
+import kotlin.io.encoding.Base64
 
 plugins {
     alias(mihonx.plugins.android.application)
@@ -46,9 +47,16 @@ android {
     }
 
     if (System.getenv("MIHON_GITHUB_RELEASE").toBoolean()) {
+        // Fork: CI passes the keystore as base64 (storeFileBase64), not a
+        // pre-decoded file path, so decode it into RUNNER_TEMP here.
+        val tempStoreFile = file(System.getenv("RUNNER_TEMP")).resolve("antsy.keystore")
+
+        val storeFileBytes = System.getenv("storeFileBase64").let(Base64::decode)
+        tempStoreFile.outputStream().use { it.write(storeFileBytes) }
+
         signingConfigs {
             named("debug") {
-                storeFile = file(System.getenv("storeFile"))
+                storeFile = tempStoreFile
                 storePassword = System.getenv("storePassword")
                 keyAlias = System.getenv("keyAlias")
                 keyPassword = System.getenv("keyPassword")
