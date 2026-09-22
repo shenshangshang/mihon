@@ -59,7 +59,7 @@ class AndroidSourceManager(
         )
 
         scope.launch {
-            extensionManager.installedExtensionsFlow
+            extensionManager.loadedExtensionsFlow
                 .collectLatest { extensions ->
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(

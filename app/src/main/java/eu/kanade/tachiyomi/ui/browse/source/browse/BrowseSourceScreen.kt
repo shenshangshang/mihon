@@ -61,6 +61,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import mihon.feature.migration.dialog.MigrateMangaDialog
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.FilterList
+import mihon.icons.materialsymbols.rounded.NewReleases
+import mihon.icons.materialsymbols.roundedfilled.Favorite
 import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.util.lang.launchIO
@@ -226,7 +230,7 @@ data class BrowseSourceScreen(
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Favorite,
+                                    imageVector = MaterialSymbols.RoundedFilled.Favorite,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(FilterChipDefaults.IconSize),
@@ -245,7 +249,7 @@ data class BrowseSourceScreen(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Outlined.NewReleases,
+                                        imageVector = MaterialSymbols.Rounded.NewReleases,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .size(FilterChipDefaults.IconSize),
@@ -262,7 +266,7 @@ data class BrowseSourceScreen(
                                 onClick = viewModel::openFilterSheet,
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Outlined.FilterList,
+                                        imageVector = MaterialSymbols.Rounded.FilterList,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .size(FilterChipDefaults.IconSize),
