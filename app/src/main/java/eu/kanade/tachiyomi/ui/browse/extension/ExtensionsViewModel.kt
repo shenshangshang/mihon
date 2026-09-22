@@ -206,8 +206,8 @@ class ExtensionsViewModel(
             .onCompletion { removeDownloadState(extension) }
             .collect()
 
-    fun uninstallExtension(extension: Extension.Installed) {
-        extensionManager.uninstallExtension(extension)
+    fun uninstallExtension(extension: Extension) {
+        extensionManager.uninstallExtension(extension as? Extension.Installed ?: return)
     }
 
     fun findAvailableExtensions() {

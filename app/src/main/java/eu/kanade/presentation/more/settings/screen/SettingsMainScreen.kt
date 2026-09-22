@@ -210,7 +210,7 @@ object SettingsMainScreen : Screen() {
         Item(
             titleRes = MR.strings.browse,
             formatSubtitle = { "Komga 服务器配置" },
-            icon = Icons.Outlined.CollectionsBookmark,
+            icon = MaterialSymbols.Rounded.CollectionsBookmark,
             screen = SettingsKomgaScreen,
         ),
         Item(
