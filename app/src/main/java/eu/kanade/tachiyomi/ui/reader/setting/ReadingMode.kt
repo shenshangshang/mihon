@@ -19,6 +19,7 @@ import mihon.icons.custommaterialsymbols.rounded.ReaderLongStripGaps
 import mihon.icons.custommaterialsymbols.rounded.ReaderRightToLeft
 import mihon.icons.custommaterialsymbols.rounded.ReaderVertical
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Preview
 import mihon.icons.materialsymbols.rounded.MobileGear
 import tachiyomi.i18n.MR
 
@@ -67,7 +68,7 @@ enum class ReadingMode(
     ),
     VIDEO(
         MR.strings.video_viewer,
-        R.drawable.ic_reader_default_24dp,
+        MaterialSymbols.Rounded.Preview,
         0x00000006,
         Direction.Vertical,
         ViewerType.Video,
