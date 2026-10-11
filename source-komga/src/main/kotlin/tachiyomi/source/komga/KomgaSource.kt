@@ -370,8 +370,8 @@ class KomgaSource(
             return MangasPage(items, false)
         }
 
-        val libraryId = (filters.find { it is LibraryFilter } as? LibraryFilter)?.let {
-            it.libraries[it.state].id.takeIf { lib -> lib.isNotBlank() }
+        val libraryId = (filters.find { it is LibraryFilter } as? LibraryFilter)?.let { filter ->
+            filter.libraries.getOrNull(filter.state - 1)?.id?.takeIf { lib -> lib.isNotBlank() }
         }
 
         val sort = (filters.find { it is SortFilter } as? SortFilter)?.let { filter ->
