@@ -72,36 +72,51 @@ jobs:
         run: |
           git push origin main
 
-      - name: Create PR on conflict
+      # On conflict we keep a SINGLE long-lived branch (not one per day) and update its PR in
+      # place, then fail the job so the conflict is visible instead of reporting a false success.
+      - name: Update conflict PR
+        id: conflict
         if: steps.merge.outputs.merge_success == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="sync-upstream-$(date +%Y%m%d)"
-          git checkout -b "$BRANCH"
+          BRANCH="sync-upstream"
+          git checkout -B "$BRANCH"
           git merge upstream/main --no-edit || true
           git diff --name-only --diff-filter=U > /tmp/conflicts.txt || true
           if [ -s /tmp/conflicts.txt ]; then
             echo "Conflicted files:"
             cat /tmp/conflicts.txt
           fi
-          # Resolve workflow conflicts with the fork's version: GITHUB_TOKEN
-          # is not allowed to push commits that touch .github/workflows/*.
+          # GITHUB_TOKEN is not allowed to push commits touching .github/workflows/*:
+          # keep the fork's versions so the push succeeds.
           git checkout --ours -- .github/workflows/ || true
-          git add -A || true
+          git add -A
           git commit -m "chore: merge upstream (conflicts need manual resolution)" --no-verify || true
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "chore: sync upstream $(date +%Y-%m-%d)" \
-            --body "Automated upstream sync from mihonapp/mihon. This PR was created because the automatic merge had conflicts that need manual resolution." \
-            --base main \
-            --head "$BRANCH" \
-            --label "sync-upstream" || true
+          git push --force origin "$BRANCH"
+
+          if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            echo "Updated existing conflict PR for $BRANCH."
+          else
+            gh pr create \
+              --title "chore: sync upstream (conflicts need manual resolution)" \
+              --body "Automated upstream sync from mihonapp/mihon. The automatic merge had conflicts that need manual resolution. This branch/PR is updated in place on each failed sync." \
+              --base main \
+              --head "$BRANCH" \
+              --label "sync-upstream"
+          fi
+
+      - name: Fail if the sync could not be merged automatically
+        if: steps.merge.outputs.merge_success == 'false'
+        run: |
+          echo "::error::Upstream sync could not be merged automatically. Resolve the conflicts in the 'sync-upstream' PR, then re-run this workflow."
+          exit 1
 
   sync-extensions:
     name: Check keiyoushi/extensions updates
     runs-on: ubuntu-24.04
     needs: sync-mihon
+    if: always()
 
     steps:
       - name: Checkout fork
