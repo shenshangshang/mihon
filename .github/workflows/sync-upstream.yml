@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   sync-mihon:
@@ -95,15 +96,20 @@ jobs:
           git commit -m "chore: merge upstream (conflicts need manual resolution)" --no-verify || true
           git push --force origin "$BRANCH"
 
+          # `gh pr create --label` fails hard when the label does not exist, so make
+          # sure it exists first (best effort: requires issues:write).
+          gh label create sync-upstream --color FBCA04 \
+            --description "Automated upstream sync conflicts" 2>/dev/null || true
+
+          TITLE="chore: sync upstream (conflicts need manual resolution)"
+          BODY="Automated upstream sync from mihonapp/mihon. The automatic merge had conflicts that need manual resolution. This branch/PR is updated in place on each failed sync."
+
           if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
             echo "Updated existing conflict PR for $BRANCH."
           else
-            gh pr create \
-              --title "chore: sync upstream (conflicts need manual resolution)" \
-              --body "Automated upstream sync from mihonapp/mihon. The automatic merge had conflicts that need manual resolution. This branch/PR is updated in place on each failed sync." \
-              --base main \
-              --head "$BRANCH" \
-              --label "sync-upstream"
+            # Prefer a labelled PR, but never let a label problem block the PR itself.
+            gh pr create --title "$TITLE" --body "$BODY" --base main --head "$BRANCH" --label "sync-upstream" \
+              || gh pr create --title "$TITLE" --body "$BODY" --base main --head "$BRANCH"
           fi
 
       - name: Fail if the sync could not be merged automatically
