@@ -198,16 +198,18 @@ class KomgaSource(
             } else if (nextSegment !in seenDirs) {
                 seenDirs.add(nextSegment)
                 val dirPath = (currentSegments + nextSegment).joinToString("/")
-                items.add(createDirectorySManga(nextSegment, dirPath))
+                // A folder has no cover of its own, so borrow the first series'
+                // cover underneath it; otherwise these levels render blank.
+                items.add(createDirectorySManga(nextSegment, dirPath, "${preferences.baseUrl}/api/v1/series/${series.id}/thumbnail"))
             }
         }
         return items
     }
 
-    private fun createDirectorySManga(name: String, dirPath: String): SManga = SManga.create().apply {
+    private fun createDirectorySManga(name: String, dirPath: String, coverUrl: String? = null): SManga = SManga.create().apply {
         title = name
         url = "$DIR_PREFIX$dirPath"
-        thumbnail_url = null
+        thumbnail_url = coverUrl?.takeIf { it.isNotBlank() }
         status = SManga.UNKNOWN
         initialized = true
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_DIRECTORY)) }
@@ -263,7 +265,8 @@ class KomgaSource(
                 if (nextSegment !in seenDirs) {
                     seenDirs.add(nextSegment)
                     val subPath = (currentSegments + nextSegment).joinToString("/")
-                    items.add(createBookDirectorySManga(nextSegment, seriesId, subPath))
+                    // Borrow the first book's cover underneath this folder.
+                    items.add(createBookDirectorySManga(nextSegment, seriesId, subPath, "$baseUrl/api/v1/books/${book.id}/thumbnail"))
                 }
             }
         }
@@ -282,10 +285,10 @@ class KomgaSource(
         }
     }
 
-    private fun createBookDirectorySManga(name: String, seriesId: String, subPath: String): SManga = SManga.create().apply {
+    private fun createBookDirectorySManga(name: String, seriesId: String, subPath: String, coverUrl: String? = null): SManga = SManga.create().apply {
         title = name
         url = "$BOOKDIR_PREFIX$seriesId/$subPath"
-        thumbnail_url = null
+        thumbnail_url = coverUrl?.takeIf { it.isNotBlank() }
         status = SManga.UNKNOWN
         initialized = true
         memo = buildJsonObject { put(MEMO_KIND, JsonPrimitive(KIND_BOOK_DIRECTORY)) }
