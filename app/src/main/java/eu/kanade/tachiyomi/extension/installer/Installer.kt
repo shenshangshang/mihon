@@ -5,7 +5,9 @@ import android.net.Uri
 import androidx.annotation.CallSuper
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.model.InstallStep
+import logcat.LogPriority
 import mihon.app.di.appGraph
+import tachiyomi.core.common.util.system.logcat
 import java.util.Collections
 import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.concurrent.atomics.AtomicReference
@@ -106,7 +108,10 @@ abstract class Installer(private val service: Service) {
     @CallSuper
     open fun onDestroy() {
         cancelListeners -= cancelListener
-        queue.forEach { extensionManager.updateInstallStep(it.downloadId, InstallStep.Error) }
+        queue.forEach {
+            logcat(LogPriority.INFO) { "The installer stopped before installing ${it.downloadId}" }
+            extensionManager.updateInstallStep(it.downloadId, InstallStep.Error)
+        }
         queue.clear()
         waitingInstall.store(null)
     }

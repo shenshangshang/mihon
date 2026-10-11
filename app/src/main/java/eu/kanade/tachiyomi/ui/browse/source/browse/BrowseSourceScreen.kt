@@ -54,20 +54,23 @@ import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceViewModel.Listing
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+<<<<<<< HEAD
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+=======
+>>>>>>> upstream/main
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.FilterList
-import mihon.icons.materialsymbols.rounded.NewReleases
+import mihon.icons.materialsymbols.rounded.Verified
 import mihon.icons.materialsymbols.roundedfilled.Favorite
 import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
-import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -249,7 +252,7 @@ data class BrowseSourceScreen(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = MaterialSymbols.Rounded.NewReleases,
+                                        imageVector = MaterialSymbols.Rounded.Verified,
                                         contentDescription = null,
                                         modifier = Modifier
                                             .size(FilterChipDefaults.IconSize),
@@ -424,6 +427,7 @@ data class BrowseSourceScreen(
                     }
                 },
                 onMangaLongClick = { manga ->
+<<<<<<< HEAD
                     val memoKind = manga.memo?.let {
                         try {
                             it["mihon.kind"]?.jsonPrimitive?.contentOrNull
@@ -442,6 +446,16 @@ data class BrowseSourceScreen(
                                 else -> viewModel.addFavorite(manga)
                             }
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+=======
+                    scope.launch(Dispatchers.IO) {
+                        val duplicates = viewModel.getDuplicateLibraryManga(manga)
+                        when {
+                            manga.favorite -> viewModel.setDialog(BrowseSourceViewModel.Dialog.RemoveManga(manga))
+                            duplicates.isNotEmpty() -> viewModel.setDialog(
+                                BrowseSourceViewModel.Dialog.AddDuplicateManga(manga, duplicates),
+                            )
+                            else -> viewModel.addFavorite(manga)
+>>>>>>> upstream/main
                         }
                     }
                 },
