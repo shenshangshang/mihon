@@ -75,9 +75,13 @@ jobs:
 
       # On conflict we keep a SINGLE long-lived branch (not one per day) and update its PR in
       # place, then fail the job so the conflict is visible instead of reporting a false success.
+      # PR creation needs the repo setting "Allow GitHub Actions to create and approve pull requests"
+      # (and, for the label, issues:write). Neither is guaranteed, so never let this step decide the
+      # job outcome: the explicit failure below is the real signal.
       - name: Update conflict PR
         id: conflict
         if: steps.merge.outputs.merge_success == 'false'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -115,7 +119,7 @@ jobs:
       - name: Fail if the sync could not be merged automatically
         if: steps.merge.outputs.merge_success == 'false'
         run: |
-          echo "::error::Upstream sync could not be merged automatically. Resolve the conflicts in the 'sync-upstream' PR, then re-run this workflow."
+          echo "::error::Upstream sync could not be merged automatically. The conflicted merge is on branch 'sync-upstream'; resolve it there (or merge locally), push main, then re-run this workflow."
           exit 1
 
   sync-extensions:
