@@ -1,9 +1,10 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.video
 
-import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -131,8 +132,6 @@ class VideoViewer(
         activity.onPageSelected(page)
     }
 
-    override fun getView(): View = container
-
     override fun destroy() {
         player?.release()
         player = null
@@ -144,6 +143,14 @@ class VideoViewer(
         chapters.ref()
         currentChapters = chapters
         playCurrentChapter()
+    }
+
+    override fun moveForward() {
+        player?.seekForward()
+    }
+
+    override fun moveBackward() {
+        player?.seekBack()
     }
 
     override fun moveToPage(page: ReaderPage) {
@@ -160,34 +167,11 @@ class VideoViewer(
         }
     }
 
-    override fun handleKeyEvent(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_UP) return false
-        return when (event.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_PLAY,
-            KeyEvent.KEYCODE_MEDIA_PAUSE,
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-            KeyEvent.KEYCODE_SPACE,
-            -> {
-                player?.let { p ->
-                    p.playWhenReady = !p.playWhenReady
-                }
-                true
-            }
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
-            KeyEvent.KEYCODE_DPAD_RIGHT,
-            -> {
-                player?.seekForward()
-                true
-            }
-            KeyEvent.KEYCODE_MEDIA_REWIND,
-            KeyEvent.KEYCODE_DPAD_LEFT,
-            -> {
-                player?.seekBack()
-                true
-            }
-            else -> false
-        }
+    @Composable
+    override fun Content(modifier: Modifier) {
+        AndroidView(
+            factory = { container },
+            modifier = modifier,
+        )
     }
-
-    override fun handleGenericMotionEvent(event: MotionEvent): Boolean = false
 }
