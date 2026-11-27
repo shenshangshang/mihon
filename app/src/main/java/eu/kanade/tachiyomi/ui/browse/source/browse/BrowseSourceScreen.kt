@@ -36,8 +36,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
+import androidx.navigation3.runtime.result.ResultEffect
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.browse.BrowseSourceContent
 import eu.kanade.presentation.browse.MissingSourceScreen
@@ -45,22 +44,26 @@ import eu.kanade.presentation.browse.components.BrowseSourceToolbar
 import eu.kanade.presentation.browse.components.RemoveMangaDialog
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
-import eu.kanade.presentation.util.AssistContentScreen
-import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.source.online.HttpSource
+<<<<<<< HEAD
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.ui.browse.extension.details.SourcePreferencesScreen
+=======
+>>>>>>> upstream/main
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceViewModel.Listing
-import eu.kanade.tachiyomi.ui.category.CategoryScreen
-import eu.kanade.tachiyomi.ui.manga.MangaScreen
-import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+<<<<<<< HEAD
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+=======
+import mihon.core.navigation.CategoryRoute
+import mihon.core.navigation.LocalAssistUrl
+import mihon.core.navigation.LocalNavigator
+import mihon.core.navigation.MangaRoute
+import mihon.core.navigation.SourcePreferencesRoute
+import mihon.core.navigation.WebViewRoute
+>>>>>>> upstream/main
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.FilterList
@@ -76,6 +79,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.source.local.LocalSource
 
+<<<<<<< HEAD
 data class BrowseSourceScreen(
     val sourceId: Long,
     private val listingQuery: String?,
@@ -148,8 +152,20 @@ data class BrowseSourceScreen(
                 }
                 else -> navigator.pop()
             }
+=======
+@Composable
+fun BrowseSourceScreen(
+    sourceId: Long,
+    listingQuery: String?,
+) {
+    val viewModel =
+        assistedMetroViewModel<BrowseSourceViewModel, BrowseSourceViewModel.Factory> {
+            create(sourceId = sourceId, listingQuery = listingQuery)
+>>>>>>> upstream/main
         }
+    val state by viewModel.state.collectAsState()
 
+<<<<<<< HEAD
         // In directory-browse mode (Komga source), the system back button
         // follows the same navigation logic as the toolbar up button:
         // walk up the directory tree, and at the root pop + switch to Library.
@@ -165,120 +181,136 @@ data class BrowseSourceScreen(
         if (source == null) {
             LoadingScreen()
             return
+=======
+    val navigator = LocalNavigator.current
+    val setAssistUrl = LocalAssistUrl.current
+    val navigateUp: () -> Unit = {
+        when {
+            !state.isUserQuery && state.toolbarQuery != null -> viewModel.setToolbarQuery(null)
+            else -> navigator.pop()
+>>>>>>> upstream/main
         }
+    }
 
-        if (source is StubSource) {
-            MissingSourceScreen(
-                source = source,
-                navigateUp = navigateUp,
-            )
-            return
-        }
+    val source = state.source
+    if (source == null) {
+        LoadingScreen()
+        return
+    }
 
-        val scope = rememberCoroutineScope()
-        val haptic = LocalHapticFeedback.current
-        val uriHandler = LocalUriHandler.current
-        val snackbarHostState = remember { SnackbarHostState() }
+    if (source is StubSource) {
+        MissingSourceScreen(
+            source = source,
+            navigateUp = navigateUp,
+        )
+        return
+    }
 
-        val onHelpClick = { uriHandler.openUri(LocalSource.HELP_URL) }
-        val onWebViewClick = f@{
-            val httpSource = source as? HttpSource ?: return@f
-            navigator.push(
-                WebViewScreen(
-                    url = httpSource.getHomeUrl(),
-                    initialTitle = httpSource.name,
-                    sourceId = httpSource.id,
-                ),
-            )
-        }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val uriHandler = LocalUriHandler.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-        LaunchedEffect(source) {
-            assistUrl = (source as? HttpSource)?.getHomeUrl()
-        }
+    val onHelpClick = { uriHandler.openUri(LocalSource.HELP_URL) }
+    val onWebViewClick = f@{
+        val httpSource = source as? HttpSource ?: return@f
+        navigator.push(
+            WebViewRoute(
+                url = httpSource.getHomeUrl(),
+                initialTitle = httpSource.name,
+                sourceId = httpSource.id,
+            ),
+        )
+    }
 
-        Scaffold(
-            topBar = {
-                Column(
+    LaunchedEffect(source) {
+        setAssistUrl((source as? HttpSource)?.getHomeUrl())
+    }
+
+    Scaffold(
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surface)
+                    .pointerInput(Unit) {},
+            ) {
+                BrowseSourceToolbar(
+                    searchQuery = state.toolbarQuery,
+                    onSearchQueryChange = viewModel::setToolbarQuery,
+                    source = source,
+                    displayMode = viewModel.displayMode,
+                    onDisplayModeChange = { viewModel.displayMode = it },
+                    navigateUp = navigateUp,
+                    onWebViewClick = onWebViewClick,
+                    onHelpClick = onHelpClick,
+                    onSettingsClick = { navigator.push(SourcePreferencesRoute(sourceId)) },
+                    onSearch = viewModel::search,
+                )
+
+                Row(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface)
-                        .pointerInput(Unit) {},
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = MaterialTheme.padding.small),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                 ) {
-                    BrowseSourceToolbar(
-                        searchQuery = state.toolbarQuery,
-                        onSearchQueryChange = viewModel::setToolbarQuery,
-                        source = source,
-                        displayMode = viewModel.displayMode,
-                        onDisplayModeChange = { viewModel.displayMode = it },
-                        navigateUp = navigateUp,
-                        onWebViewClick = onWebViewClick,
-                        onHelpClick = onHelpClick,
-                        onSettingsClick = { navigator.push(SourcePreferencesScreen(sourceId)) },
-                        onSearch = viewModel::search,
+                    FilterChip(
+                        selected = state.listing == Listing.Popular,
+                        onClick = {
+                            viewModel.resetFilters()
+                            viewModel.setListing(Listing.Popular)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = MaterialSymbols.RoundedFilled.Favorite,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(FilterChipDefaults.IconSize),
+                            )
+                        },
+                        label = {
+                            Text(text = stringResource(MR.strings.popular))
+                        },
                     )
-
-                    Row(
-                        modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = MaterialTheme.padding.small),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                    ) {
+                    if (source.supportsLatest) {
                         FilterChip(
-                            selected = state.listing == Listing.Popular,
+                            selected = state.listing == Listing.Latest,
                             onClick = {
                                 viewModel.resetFilters()
-                                viewModel.setListing(Listing.Popular)
+                                viewModel.setListing(Listing.Latest)
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = MaterialSymbols.RoundedFilled.Favorite,
+                                    imageVector = MaterialSymbols.Rounded.Verified,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(FilterChipDefaults.IconSize),
                                 )
                             },
                             label = {
-                                Text(text = stringResource(MR.strings.popular))
+                                Text(text = stringResource(MR.strings.latest))
                             },
                         )
-                        if (source.supportsLatest) {
-                            FilterChip(
-                                selected = state.listing == Listing.Latest,
-                                onClick = {
-                                    viewModel.resetFilters()
-                                    viewModel.setListing(Listing.Latest)
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.Verified,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(FilterChipDefaults.IconSize),
-                                    )
-                                },
-                                label = {
-                                    Text(text = stringResource(MR.strings.latest))
-                                },
-                            )
-                        }
-                        if (state.filters.isNotEmpty()) {
-                            FilterChip(
-                                selected = state.listing is Listing.Search,
-                                onClick = viewModel::openFilterSheet,
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.FilterList,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(FilterChipDefaults.IconSize),
-                                    )
-                                },
-                                label = {
-                                    Text(text = stringResource(MR.strings.action_filter))
-                                },
-                            )
-                        }
                     }
+                    if (state.filters.isNotEmpty()) {
+                        FilterChip(
+                            selected = state.listing is Listing.Search,
+                            onClick = viewModel::openFilterSheet,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.FilterList,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(FilterChipDefaults.IconSize),
+                                )
+                            },
+                            label = {
+                                Text(text = stringResource(MR.strings.action_filter))
+                            },
+                        )
+                    }
+                }
 
+<<<<<<< HEAD
                     HorizontalDivider()
 
                     // Breadcrumb navigation for directory tree browsing
@@ -445,82 +477,96 @@ data class BrowseSourceScreen(
                         }
                     }
                 },
+=======
+                HorizontalDivider()
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) { paddingValues ->
+        BrowseSourceContent(
+            source = source,
+            mangaList = viewModel.mangaPagerFlowFlow.collectAsLazyPagingItems(),
+            columns = viewModel.getColumnsPreference(LocalConfiguration.current.orientation),
+            displayMode = viewModel.displayMode,
+            snackbarHostState = snackbarHostState,
+            contentPadding = paddingValues,
+            onWebViewClick = onWebViewClick,
+            onHelpClick = { uriHandler.openUri(Constants.URL_HELP) },
+            onLocalSourceHelpClick = onHelpClick,
+            onMangaClick = { navigator.push(MangaRoute(it.id, true)) },
+            onMangaLongClick = { manga ->
+                scope.launch(Dispatchers.IO) {
+                    val duplicates = viewModel.getDuplicateLibraryManga(manga)
+                    when {
+                        manga.favorite -> viewModel.setDialog(BrowseSourceViewModel.Dialog.RemoveManga(manga))
+                        duplicates.isNotEmpty() -> viewModel.setDialog(
+                            BrowseSourceViewModel.Dialog.AddDuplicateManga(manga, duplicates),
+                        )
+                        else -> viewModel.addFavorite(manga)
+                    }
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+            },
+        )
+    }
+
+    val onDismissRequest = { viewModel.setDialog(null) }
+    when (val dialog = state.dialog) {
+        is BrowseSourceViewModel.Dialog.Filter -> {
+            SourceFilterDialog(
+                onDismissRequest = onDismissRequest,
+                filters = state.filters,
+                onReset = viewModel::resetFilters,
+                onFilter = { viewModel.search(filters = state.filters) },
+                onUpdate = viewModel::setFilters,
+            )
+        }
+        is BrowseSourceViewModel.Dialog.AddDuplicateManga -> {
+            DuplicateMangaDialog(
+                duplicates = dialog.duplicates,
+                onDismissRequest = onDismissRequest,
+                onConfirm = { viewModel.addFavorite(dialog.manga) },
+                onOpenManga = { navigator.push(MangaRoute(it.id)) },
+                onMigrate = { viewModel.setDialog(BrowseSourceViewModel.Dialog.Migrate(dialog.manga, it)) },
+>>>>>>> upstream/main
             )
         }
 
-        val onDismissRequest = { viewModel.setDialog(null) }
-        when (val dialog = state.dialog) {
-            is BrowseSourceViewModel.Dialog.Filter -> {
-                SourceFilterDialog(
-                    onDismissRequest = onDismissRequest,
-                    filters = state.filters,
-                    onReset = viewModel::resetFilters,
-                    onFilter = { viewModel.search(filters = state.filters) },
-                    onUpdate = viewModel::setFilters,
-                )
-            }
-            is BrowseSourceViewModel.Dialog.AddDuplicateManga -> {
-                DuplicateMangaDialog(
-                    duplicates = dialog.duplicates,
-                    onDismissRequest = onDismissRequest,
-                    onConfirm = { viewModel.addFavorite(dialog.manga) },
-                    onOpenManga = { navigator.push(MangaScreen(it.id)) },
-                    onMigrate = { viewModel.setDialog(BrowseSourceViewModel.Dialog.Migrate(dialog.manga, it)) },
-                )
-            }
-
-            is BrowseSourceViewModel.Dialog.Migrate -> {
-                MigrateMangaDialog(
-                    current = dialog.current,
-                    target = dialog.target,
-                    // Initiated from the context of [dialog.target] so we show [dialog.current].
-                    onClickTitle = { navigator.push(MangaScreen(dialog.current.id)) },
-                    onDismissRequest = onDismissRequest,
-                )
-            }
-            is BrowseSourceViewModel.Dialog.RemoveManga -> {
-                RemoveMangaDialog(
-                    onDismissRequest = onDismissRequest,
-                    onConfirm = {
-                        viewModel.changeMangaFavorite(dialog.manga)
-                    },
-                    mangaToRemove = dialog.manga,
-                )
-            }
-            is BrowseSourceViewModel.Dialog.ChangeMangaCategory -> {
-                ChangeCategoryDialog(
-                    initialSelection = dialog.initialSelection,
-                    onDismissRequest = onDismissRequest,
-                    onEditCategories = { navigator.push(CategoryScreen()) },
-                    onConfirm = { include, _ ->
-                        viewModel.changeMangaFavorite(dialog.manga)
-                        viewModel.moveMangaToCategories(dialog.manga, include)
-                    },
-                )
-            }
-            else -> {}
+        is BrowseSourceViewModel.Dialog.Migrate -> {
+            MigrateMangaDialog(
+                current = dialog.current,
+                target = dialog.target,
+                // Initiated from the context of [dialog.target] so we show [dialog.current].
+                onClickTitle = { navigator.push(MangaRoute(dialog.current.id)) },
+                onDismissRequest = onDismissRequest,
+            )
         }
-
-        LaunchedEffect(Unit) {
-            queryEvent.receiveAsFlow()
-                .collectLatest {
-                    when (it) {
-                        is SearchType.Genre -> viewModel.searchGenre(it.txt)
-                        is SearchType.Text -> viewModel.search(it.txt)
-                    }
-                }
+        is BrowseSourceViewModel.Dialog.RemoveManga -> {
+            RemoveMangaDialog(
+                onDismissRequest = onDismissRequest,
+                onConfirm = {
+                    viewModel.changeMangaFavorite(dialog.manga)
+                },
+                mangaToRemove = dialog.manga,
+            )
         }
+        is BrowseSourceViewModel.Dialog.ChangeMangaCategory -> {
+            ChangeCategoryDialog(
+                initialSelection = dialog.initialSelection,
+                onDismissRequest = onDismissRequest,
+                onEditCategories = { navigator.push(CategoryRoute) },
+                onConfirm = { include, _ ->
+                    viewModel.changeMangaFavorite(dialog.manga)
+                    viewModel.moveMangaToCategories(dialog.manga, include)
+                },
+            )
+        }
+        else -> {}
     }
 
-    suspend fun search(query: String) = queryEvent.send(SearchType.Text(query))
-    suspend fun searchGenre(name: String) = queryEvent.send(SearchType.Genre(name))
-
-    companion object {
-        private val queryEvent = Channel<SearchType>()
-    }
-
-    sealed class SearchType(val txt: String) {
-        class Text(txt: String) : SearchType(txt)
-        class Genre(txt: String) : SearchType(txt)
+    ResultEffect<BrowseSearchEvent> {
+        if (it.genre) viewModel.searchGenre(it.query) else viewModel.search(it.query)
     }
 }
+
+data class BrowseSearchEvent(val query: String, val genre: Boolean = false)
